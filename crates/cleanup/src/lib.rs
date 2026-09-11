@@ -197,6 +197,15 @@ impl RuleBasedCleaner {
         let re_correction = Regex::new(r"(?i)\b([a-zA-Z0-9]+)\s*(?:,\s*actually|,\s*sorry|,\s*I mean|,\s*I meant|,?\s*make that|,?\s*or rather|,?\s*wait no|,?\s*no wait|,?\s*no actually|,?\s*wait actually)\s+([a-zA-Z0-9]+)\b").unwrap();
         text = re_correction.replace_all(&text, "$2").to_string();
 
+        // Whisper may omit the comma in a spoken correction such as
+        // "Tuesday actually Thursday". Restrict this fallback to weekday
+        // names so ordinary prose like "I actually think" is preserved.
+        let re_day_correction = Regex::new(
+            r"(?i)\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+actually\s+([a-zA-Z0-9]+)\b",
+        )
+        .unwrap();
+        text = re_day_correction.replace_all(&text, "$2").to_string();
+
         text
     }
 
@@ -384,7 +393,7 @@ impl RuleBasedCleaner {
         let text = RE_PUNCT_SPACE.replace_all(&text, "$1").to_string();
 
         // 1. Commas, semicolons, question marks, exclamation marks followed by letter/digit -> ensure space
-        let re_space_after_punct = Regex::new(r"([,;?!])([a-zA-Z0-9])").unwrap();
+        let re_space_after_punct = Regex::new(r"([,;?!])([a-zA-Z])").unwrap();
         let text = re_space_after_punct.replace_all(&text, "$1 $2").to_string();
 
         // 2. Colons followed by letter/digit: add space UNLESS part of http://, https://, or time (10:30)
@@ -625,6 +634,110 @@ mod tests {
         );
         assert!(smart.cleaned_text.contains("1. Ship Thursday"));
         assert_ne!(smart.cleaned_text, structured.cleaned_text);
+    }
+
+    #[test]
+    fn formatting_matrix_raw_preserves_mixed_speech_verbatim() {
+        let input = "hello comma first item new line second item new paragraph email ali dot khan at gmail dot com visit www dot example dot com budget fifteen thousand five hundred";
+        let transcript = Transcript {
+            text: input.to_string(),
+            language: "en".to_string(),
+            provider: "groq".to_string(),
+            model: "whisper-large-v3-turbo".to_string(),
+            duration_ms: 4000,
+            confidence: Some(0.98),
+        };
+        let options = CleanupOptions {
+            mode: FormattingMode::Raw,
+            dictionary: HashMap::new(),
+            snippets: HashMap::new(),
+        };
+
+        let result = RuleBasedCleaner::clean(&transcript, &options).unwrap();
+
+        assert_eq!(result.cleaned_text, input);
+    }
+
+    #[test]
+    fn formatting_matrix_clean_normalizes_entities_without_structure() {
+        let transcript = Transcript {
+            text: "um email me at ali dot khan at gmail dot com comma visit www dot example dot com comma the budget is fifteen thousand five hundred dollars and twenty percent".to_string(),
+            language: "en".to_string(),
+            provider: "groq".to_string(),
+            model: "whisper-large-v3-turbo".to_string(),
+            duration_ms: 4000,
+            confidence: Some(0.98),
+        };
+        let options = CleanupOptions {
+            mode: FormattingMode::Clean,
+            dictionary: HashMap::new(),
+            snippets: HashMap::new(),
+        };
+
+        let result = RuleBasedCleaner::clean(&transcript, &options).unwrap();
+
+        assert!(result.cleaned_text.contains("ali.khan@gmail.com"));
+        assert!(result.cleaned_text.contains("www.example.com"));
+        assert!(
+            result.cleaned_text.contains("15,500"),
+            "clean output: {:?}",
+            result.cleaned_text
+        );
+        assert!(result.cleaned_text.contains("20%"));
+        assert!(!result.cleaned_text.contains("um"));
+        assert!(!result.cleaned_text.contains("1. "));
+    }
+
+    #[test]
+    fn formatting_matrix_structured_formats_paragraphs_bullets_and_steps() {
+        let transcript = Transcript {
+            text: "title: release plan new paragraph bullet point review email comma bullet point deploy new paragraph step 1: build step 2: test".to_string(),
+            language: "en".to_string(),
+            provider: "groq".to_string(),
+            model: "whisper-large-v3-turbo".to_string(),
+            duration_ms: 4000,
+            confidence: Some(0.98),
+        };
+        let options = CleanupOptions {
+            mode: FormattingMode::Structured,
+            dictionary: HashMap::new(),
+            snippets: HashMap::new(),
+        };
+
+        let result = RuleBasedCleaner::clean(&transcript, &options).unwrap();
+
+        assert!(result.cleaned_text.contains("### Release plan"));
+        assert!(result.cleaned_text.contains("- Review email,"));
+        assert!(result.cleaned_text.contains("- Deploy"));
+        assert!(result.cleaned_text.contains("1. Build"));
+        assert!(result.cleaned_text.contains("2. Test"));
+    }
+
+    #[test]
+    fn formatting_matrix_smart_combines_correction_entities_and_structure() {
+        let transcript = Transcript {
+            text: "please email ali dot khan at gmail dot com comma first deploy on Tuesday actually Thursday then notify the team".to_string(),
+            language: "en".to_string(),
+            provider: "groq".to_string(),
+            model: "whisper-large-v3-turbo".to_string(),
+            duration_ms: 4000,
+            confidence: Some(0.98),
+        };
+        let options = CleanupOptions {
+            mode: FormattingMode::Smart,
+            dictionary: HashMap::new(),
+            snippets: HashMap::new(),
+        };
+
+        let result = RuleBasedCleaner::clean(&transcript, &options).unwrap();
+
+        assert!(result.cleaned_text.contains("ali.khan@gmail.com"));
+        assert!(result.cleaned_text.contains("Thursday"));
+        assert!(
+            !result.cleaned_text.contains("Tuesday actually"),
+            "smart output: {:?}",
+            result.cleaned_text
+        );
     }
 
     #[test]

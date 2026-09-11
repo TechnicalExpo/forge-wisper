@@ -200,13 +200,13 @@ The Windows build/test gate passes with the canonical Tauri shortcut path. Manua
 - Microphone-level updates never overlap.
 - UI polling is capped at a deliberate rate, or Rust emits throttled level events.
 
-- [ ] **Step 1: Add a non-overlapping polling helper**
+- [x] **Step 1: Add a non-overlapping polling helper**
 
-Implement one shared frontend helper using recursive `setTimeout`, cancellation, and an 80 ms minimum interval.
+Implemented `apps/desktop/src/lib/microphonePolling.ts` using recursive `setTimeout`, cancellation, an immediate first read, and an 80 ms minimum interval.
 
-- [ ] **Step 2: Use the helper in Dashboard, FloatingRecorder, and Settings**
+- [x] **Step 2: Use the helper in Dashboard, FloatingRecorder, and Settings**
 
-Stop polling immediately when the relevant screen/state no longer needs the meter.
+Dashboard, FloatingRecorder, and Settings stop polling during effect cleanup or microphone-test cancellation.
 
 - [ ] **Step 3: Prefer throttled Rust events if profiling shows IPC remains expensive**
 

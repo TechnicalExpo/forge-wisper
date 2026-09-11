@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { api } from "../lib/tauri";
+import { startMicrophoneLevelPolling } from "../lib/microphonePolling";
 import type {
   AppSettings,
   AudioDeviceInfo,
@@ -184,16 +185,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       setAudioLevel(0);
       return;
     }
-    const interval = setInterval(async () => {
-      try {
-        const rms = await api.getMicLevel();
-        const level = Math.min(1.0, Math.max(0.05, rms * 8.0));
-        setAudioLevel(level);
-      } catch {
-        // ignore
-      }
-    }, 40);
-    return () => clearInterval(interval);
+    return startMicrophoneLevelPolling(api.getMicLevel, (rms) => {
+      const level = Math.min(1.0, Math.max(0.05, rms * 8.0));
+      setAudioLevel(level);
+    });
   }, [procState]);
 
   const toggleRecording = async (e?: React.MouseEvent) => {

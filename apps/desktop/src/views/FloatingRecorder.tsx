@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/tauri";
+import { startMicrophoneLevelPolling } from "../lib/microphonePolling";
 import type { ProcessingState } from "../types";
 
 export const FloatingRecorder: React.FC = () => {
@@ -50,17 +51,11 @@ export const FloatingRecorder: React.FC = () => {
       setAudioLevel(0);
       return;
     }
-    const interval = setInterval(async () => {
-      try {
-        const rms = await api.getMicLevel();
-        // Scale microphone level for real-time visual voice reaction
-        const level = Math.min(1.0, Math.max(0, rms * 7.5));
-        setAudioLevel(level);
-      } catch {
-        // ignore
-      }
-    }, 30);
-    return () => clearInterval(interval);
+    return startMicrophoneLevelPolling(api.getMicLevel, (rms) => {
+      // Scale microphone level for real-time visual voice reaction
+      const level = Math.min(1.0, Math.max(0, rms * 7.5));
+      setAudioLevel(level);
+    });
   }, [state]);
 
   const stopAndPaste = async () => {

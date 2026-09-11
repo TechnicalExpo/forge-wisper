@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { api } from "../lib/tauri";
+import { startMicrophoneLevelPolling } from "../lib/microphonePolling";
 import type {
   AppSettings,
   AudioDeviceInfo,
@@ -73,14 +74,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
   // Microphone Live Testing
   const [isMicTesting, setIsMicTesting] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
-  const intervalRef = useRef<number | null>(null);
+  const stopMicPollingRef = useRef<(() => void) | null>(null);
 
   const toggleMicTest = async () => {
     if (isMicTesting) {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      stopMicPollingRef.current?.();
+      stopMicPollingRef.current = null;
       try {
         await api.cancelRecording();
       } catch {
@@ -95,16 +94,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
       await api.startRecording();
       setIsMicTesting(true);
 
-      intervalRef.current = window.setInterval(async () => {
-        try {
-          const rms = await api.getMicLevel();
+      stopMicPollingRef.current = startMicrophoneLevelPolling(
+        api.getMicLevel,
+        (rms) => {
           // Scale float RMS (0.0 to 0.4) to 0-100 percentage
           const percent = Math.min(100, Math.round(rms * 500));
           setMicLevel(percent);
-        } catch {
-          // ignore
-        }
-      }, 60);
+        },
+      );
     } catch (e) {
       alert(`Microphone Error: ${e}`);
     }
@@ -190,9 +187,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
 
   useEffect(() => {
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      stopMicPollingRef.current?.();
     };
   }, []);
 

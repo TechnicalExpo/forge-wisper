@@ -358,6 +358,11 @@ cargo clippy -p forge-provider-local-whisper --all-targets -- -D warnings
 
 ### Task 10: Move Dashboard Metrics And History Search To Efficient APIs
 
+> Formatting-mode validation is tracked separately on `fix/formatting-modes`.
+> The cleanup matrix now covers Raw, Clean, Structured, and Smart with mixed
+> paragraphs, bullets, numbering, emails, URLs, numbers, fillers, and spoken
+> corrections.
+
 **Files:**
 - Modify: `crates/storage/src/lib.rs`
 - Modify: `apps/desktop/src-tauri/src/commands.rs`

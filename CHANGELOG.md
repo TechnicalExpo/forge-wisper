@@ -9,6 +9,19 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.1.10] - 2026-09-11
+
+### Fixed
+
+- Added a full formatting matrix covering Raw, Clean, Structured, and Smart output with emails, URLs, numbers, paragraphs, bullets, numbering, fillers, and corrections.
+- Fixed spoken weekday corrections without punctuation and preserved numeric comma formatting such as `15,500`.
+
+## [0.1.10] - 2026-09-11
+
+### Fixed
+
+- Made formatting modes behaviorally distinct: Clean no longer applies self-corrections or structure detection, Structured adds outline structure, and Smart applies contextual corrections plus structure.
+
 ## [0.1.9] - 2026-09-11
 
 ### Fixed

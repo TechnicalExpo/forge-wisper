@@ -48,6 +48,19 @@ pub struct AppSettings {
     pub launch_at_startup: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SettingsUpdatePlan {
+    pub update_autostart: bool,
+    pub update_hotkey: bool,
+}
+
+pub fn settings_update_plan(current: &AppSettings, next: &AppSettings) -> SettingsUpdatePlan {
+    SettingsUpdatePlan {
+        update_autostart: current.launch_at_startup != next.launch_at_startup,
+        update_hotkey: current.hotkey != next.hotkey,
+    }
+}
+
 fn default_theme() -> String {
     "light".to_string()
 }
@@ -404,5 +417,51 @@ impl PipelineState {
 impl Default for PipelineState {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod settings_tests {
+    use super::{settings_update_plan, AppSettings};
+
+    #[test]
+    fn unrelated_settings_do_not_schedule_os_side_effects() {
+        let current = AppSettings::default();
+        let mut next = current.clone();
+        next.theme = "dark".to_string();
+        next.formatting_mode = forge_cleanup::FormattingMode::Clean;
+
+        assert_eq!(
+            settings_update_plan(&current, &next),
+            super::SettingsUpdatePlan {
+                update_autostart: false,
+                update_hotkey: false,
+            }
+        );
+    }
+
+    #[test]
+    fn only_changed_os_settings_schedule_their_side_effects() {
+        let current = AppSettings::default();
+
+        let mut startup_changed = current.clone();
+        startup_changed.launch_at_startup = true;
+        assert_eq!(
+            settings_update_plan(&current, &startup_changed),
+            super::SettingsUpdatePlan {
+                update_autostart: true,
+                update_hotkey: false,
+            }
+        );
+
+        let mut hotkey_changed = current.clone();
+        hotkey_changed.hotkey = "Control+Alt+Space".to_string();
+        assert_eq!(
+            settings_update_plan(&current, &hotkey_changed),
+            super::SettingsUpdatePlan {
+                update_autostart: false,
+                update_hotkey: true,
+            }
+        );
     }
 }

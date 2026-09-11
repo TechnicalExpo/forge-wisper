@@ -1,4 +1,4 @@
-use crate::state::{AppSettings, PipelineState, ProcessingState};
+use crate::state::{settings_update_plan, AppSettings, PipelineState, ProcessingState};
 use forge_audio::{list_input_devices, AudioDeviceInfo};
 use forge_cleanup::{CleanupOptions, FormattingMode, RuleBasedCleaner};
 use forge_provider_local_whisper::{HardwareDetector, HardwareRecommendation, LocalModelInfo};
@@ -48,21 +48,23 @@ pub fn update_settings(
     settings: AppSettings,
     state: State<'_, PipelineState>,
 ) -> Result<(), String> {
-    // 1. Sync OS startup autostart state
-    let _ = crate::set_autostart(settings.launch_at_startup);
+    let current_settings = state.settings.lock().unwrap().clone();
+    let update_plan = settings_update_plan(&current_settings, &settings);
 
-    // 2. Always save settings to disk and in-memory state
+    // Only touch OS integrations when their corresponding setting changed.
+    if update_plan.update_autostart {
+        crate::set_autostart(settings.launch_at_startup)?;
+    }
+
+    if update_plan.update_hotkey {
+        crate::register_global_hotkey(&app, &settings.hotkey)?;
+    }
+
+    // Persist settings and update in-memory state after external validation.
     settings.save();
     {
         let mut s = state.settings.lock().unwrap();
         *s = settings.clone();
-    }
-
-    // 3. Dynamically update OS global hotkey registration
-    let reg_res = crate::register_global_hotkey(&app, &settings.hotkey);
-    if let Err(err_msg) = reg_res {
-        println!("[Settings] Hotkey registration warning: {}", err_msg);
-        return Err(err_msg);
     }
 
     Ok(())

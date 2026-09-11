@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/tauri";
+import { setAppSettings, useAppStore } from "../state/appStore";
 import type { AppSettings } from "../types";
 import {
   BookOpen,
@@ -62,7 +63,7 @@ function getPaginationRange(currentPage: number, totalPages: number, siblingCoun
 }
 
 export const DictionaryView: React.FC = () => {
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const { settings } = useAppStore();
   const [activeSubTab, setActiveSubTab] = useState<"words" | "snippets">("words");
   const [searchQuery, setSearchQuery] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -87,23 +88,10 @@ export const DictionaryView: React.FC = () => {
   const [testInput, setTestInput] = useState("");
   const [testOutput, setTestOutput] = useState("");
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
-    try {
-      const s = await api.getSettings();
-      setSettings(s);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const handleSave = async (updated: AppSettings) => {
     try {
       await api.updateSettings(updated);
-      setSettings(updated);
+      setAppSettings(updated);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (e) {

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/tauri";
+import { setAppSettings, useAppStore } from "../state/appStore";
 import type {
   HardwareRecommendation,
   LocalModelInfo,
@@ -20,7 +21,7 @@ import {
 export const ModelManagerView: React.FC = () => {
   const [models, setModels] = useState<LocalModelInfo[]>([]);
   const [rec, setRec] = useState<HardwareRecommendation | null>(null);
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const { settings } = useAppStore();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<
     Record<string, { downloaded: number; total: number; percentage: number }>
@@ -28,8 +29,6 @@ export const ModelManagerView: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    loadModels();
-
     const unlisten = api.onModelDownloadProgress((payload) => {
       setDownloadProgress((prev) => ({
         ...prev,
@@ -58,14 +57,18 @@ export const ModelManagerView: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (settings) void loadModels();
+  }, [settings]);
+
   const loadModels = async () => {
     try {
       const m = await api.listModels();
       setModels(m);
       const r = await api.getHardwareRecommendation();
       setRec(r);
-      const s = await api.getSettings();
-      setSettings(s);
+      const s = settings;
+      if (!s) return;
 
       // Check active backend downloads to restore progress if user navigated away and returned
       const activeDownloads = await api.getActiveModelDownloads();
@@ -91,7 +94,7 @@ export const ModelManagerView: React.FC = () => {
           if (firstInstalled) {
             const updated = { ...s, model: firstInstalled.id };
             await api.updateSettings(updated);
-            setSettings(updated);
+            setAppSettings(updated);
           }
         }
       }
@@ -115,7 +118,7 @@ export const ModelManagerView: React.FC = () => {
           model: id,
         };
         await api.updateSettings(updated);
-        setSettings(updated);
+        setAppSettings(updated);
       }
     } catch (e) {
       setErrorMsg(`Download failed: ${e}`);
@@ -144,7 +147,7 @@ export const ModelManagerView: React.FC = () => {
         model: modelId,
       };
       await api.updateSettings(updated);
-      setSettings(updated);
+      setAppSettings(updated);
     } catch (e) {
       console.error(e);
     }

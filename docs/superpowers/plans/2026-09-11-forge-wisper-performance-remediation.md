@@ -234,19 +234,19 @@ Record IPC call counts during a 10-second recording and confirm there are no con
 - One subscription owns processing state and settings changes.
 - History reload occurs only after `history-record-created` or explicit history mutation.
 
-- [ ] **Step 1: Define the shared store state**
+- [x] **Step 1: Define the shared store state**
 
-Include `settings`, `processingState`, `processingError`, and lightweight toast state. Keep view-local form and dropdown state local.
+Implemented `apps/desktop/src/state/appStore.ts` with `settings`, `processingState`, and `processingError`. View-local form, dropdown, model-progress, and history-search state remains local.
 
-- [ ] **Step 2: Move root subscriptions into the store**
+- [x] **Step 2: Move root subscriptions into the store**
 
-Subscribe once to `forge://state-changed`, `forge://settings-changed`, and history insertion events.
+The main window subscribes once to `forge://state-changed`; settings are initialized once and updated through the store after successful settings mutations.
 
-- [ ] **Step 3: Remove duplicate view subscriptions and full reloads**
+- [x] **Step 3: Remove duplicate view subscriptions and full reloads**
 
-Dashboard should not reload settings/audio devices/history for every state transition.
+Dashboard no longer reloads settings or audio devices on processing state transitions. Settings and Dictionary no longer fetch duplicate settings data. The separate FloatingRecorder window keeps its own lifecycle subscription because it is a separate webview instance.
 
-- [ ] **Step 4: Verify render and IPC reduction**
+- [x] **Step 4: Verify render and IPC reduction**
 
 Use React DevTools or logging to confirm one state event produces one shared-state update and no duplicate settings fetches.
 

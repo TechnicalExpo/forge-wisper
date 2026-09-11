@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { api } from "../lib/tauri";
+import { setAppSettings, useAppStore } from "../state/appStore";
 import { startMicrophoneLevelPolling } from "../lib/microphonePolling";
 import type {
   AppSettings,
@@ -52,7 +53,7 @@ export const formatKeyForDisplay = (keyStr: string): string => {
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavigate }) => {
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>("engine");
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const { settings } = useAppStore();
   const [audioDevices, setAudioDevices] = useState<AudioDeviceInfo[]>([]);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
@@ -197,8 +198,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
 
   const loadSettings = async () => {
     try {
-      const s = await api.getSettings();
-      setSettings(s);
       const devices = await api.getAudioDevices();
       setAudioDevices(devices);
       const keyStatus = await api.getGroqKeyStatus();
@@ -220,7 +219,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
   const handleSave = async (updated: AppSettings) => {
     try {
       await api.updateSettings(updated);
-      setSettings(updated);
+      setAppSettings(updated);
       setSaveSuccess(true);
       document.documentElement.setAttribute("data-theme", resolveEffectiveTheme(updated.theme));
       setTimeout(() => setSaveSuccess(false), 2000);

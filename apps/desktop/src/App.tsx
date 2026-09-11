@@ -7,7 +7,7 @@ import { DictionaryView } from "./views/DictionaryView";
 import { FloatingRecorder } from "./views/FloatingRecorder";
 import { ForgeLogo } from "./components/ForgeLogo";
 import { api } from "./lib/tauri";
-import type { AppSettings } from "./types";
+import { setAppSettings, startAppStore, useAppStore } from "./state/appStore";
 import {
   LayoutDashboard,
   History as HistoryIcon,
@@ -28,8 +28,8 @@ export const App: React.FC = () => {
   const [isRecorderWindow, setIsRecorderWindow] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentTab, setCurrentTab] = useState<Tab>("dashboard");
-  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const { settings } = useAppStore();
 
   const resolveEffectiveTheme = (themePreference?: string) => {
     if (themePreference === "system") {
@@ -52,26 +52,16 @@ export const App: React.FC = () => {
       return;
     }
 
-    api.getSettings().then((s) => {
-      setSettings(s);
-      applyTheme(s.theme);
-    }).catch(console.error);
+    const storeCleanup = startAppStore();
 
     const unlistenToast = api.onToast((msg) => {
       setToastMessage(msg);
       setTimeout(() => setToastMessage(null), 3000);
     });
 
-    const unlistenState = api.onStateChange(() => {
-      api.getSettings().then((s) => {
-        setSettings(s);
-        applyTheme(s.theme);
-      }).catch(console.error);
-    });
-
     return () => {
       unlistenToast.then((fn) => fn());
-      unlistenState.then((fn) => fn());
+      storeCleanup.then((cleanup) => cleanup());
     };
   }, []);
 
@@ -94,7 +84,7 @@ export const App: React.FC = () => {
     const updated = { ...settings, theme: newTheme as "dark" | "light" | "system" };
     try {
       await api.updateSettings(updated);
-      setSettings(updated);
+      setAppSettings(updated);
       applyTheme(newTheme);
     } catch (e) {
       console.error(e);

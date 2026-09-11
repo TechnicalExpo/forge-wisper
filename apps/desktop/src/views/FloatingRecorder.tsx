@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/tauri";
+import { startMicrophoneLevelPolling } from "../lib/microphonePolling";
 import type { ProcessingState } from "../types";
 
 export const FloatingRecorder: React.FC = () => {
@@ -50,17 +51,11 @@ export const FloatingRecorder: React.FC = () => {
       setAudioLevel(0);
       return;
     }
-    const interval = setInterval(async () => {
-      try {
-        const rms = await api.getMicLevel();
-        // Scale microphone level for real-time visual voice reaction
-        const level = Math.min(1.0, Math.max(0, rms * 7.5));
-        setAudioLevel(level);
-      } catch {
-        // ignore
-      }
-    }, 30);
-    return () => clearInterval(interval);
+    return startMicrophoneLevelPolling(api.getMicLevel, (rms) => {
+      // Scale microphone level for real-time visual voice reaction
+      const level = Math.min(1.0, Math.max(0, rms * 7.5));
+      setAudioLevel(level);
+    });
   }, [state]);
 
   const stopAndPaste = async () => {
@@ -103,8 +98,6 @@ export const FloatingRecorder: React.FC = () => {
             const maxHeight = 18;
             const dynamicHeight = state === "Listening"
               ? Math.max(minHeight, Math.min(maxHeight, Math.round(minHeight + (audioLevel * mult + 0.12) * (maxHeight - minHeight))))
-              : isProcessing
-              ? Math.round(minHeight + ((Math.sin((Date.now() / 140) + i) + 1) / 2) * (maxHeight - minHeight))
               : minHeight;
 
             return (
@@ -114,7 +107,7 @@ export const FloatingRecorder: React.FC = () => {
                   state === "Listening"
                     ? "bg-[var(--accent)] shadow-[0_0_4px_var(--accent)]"
                     : isProcessing
-                    ? "bg-[var(--accent)] opacity-80"
+                    ? "bg-[var(--accent)] opacity-80 recorder-processing-bar"
                     : "bg-[var(--text-muted)] opacity-40"
                 }`}
                 style={{

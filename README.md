@@ -6,6 +6,8 @@
 
 **Next-Generation Open-Source Voice-to-Structured-Text Desktop Application**
 
+**Current version:** `0.1.5`
+
 *Speak naturally. Release. Receive clean, formatted, verified text directly at your cursor.*
 
 [![Rust](https://img.shields.io/badge/Rust-2021_Edition-orange?logo=rust&logoColor=white)](https://www.rust-lang.org/)
@@ -185,6 +187,12 @@ cargo test --workspace
 
 # Run speech cleanup and email normalization test suite
 cargo test --package forge-cleanup
+
+# Rust lint gate
+cargo clippy --workspace --all-targets -- -D warnings
+
+# Frontend typecheck and production bundle
+pnpm --filter @forge-wisper/desktop build
 ```
 
 ---
@@ -206,6 +214,8 @@ Contributions are welcome! If you'd like to help improve Forge Wisper:
 3. Commit your changes (`git commit -m 'Add some amazing feature'`).
 4. Push to the branch (`git push origin feature/amazing-feature`).
 5. Open a Pull Request.
+
+All development follows focused feature/fix branches, mandatory tests and lint gates, synchronized version bumps, and changelog updates. Read [`AGENTS.md`](AGENTS.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md) before making changes.
 
 ---
 

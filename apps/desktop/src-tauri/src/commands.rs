@@ -1,4 +1,4 @@
-use crate::state::{AppSettings, PipelineState, ProcessingState};
+use crate::state::{settings_update_plan, AppSettings, PipelineState, ProcessingState};
 use forge_audio::{list_input_devices, AudioDeviceInfo};
 use forge_cleanup::{CleanupOptions, FormattingMode, RuleBasedCleaner};
 use forge_provider_local_whisper::{HardwareDetector, HardwareRecommendation, LocalModelInfo};
@@ -6,6 +6,7 @@ use forge_security::SecretStore;
 use forge_storage::HistoryRecord;
 use forge_transcription::Transcript;
 use tauri::{AppHandle, Emitter, State};
+use std::time::Instant;
 
 #[tauri::command]
 pub fn get_processing_state(state: State<'_, PipelineState>) -> ProcessingState {
@@ -14,7 +15,15 @@ pub fn get_processing_state(state: State<'_, PipelineState>) -> ProcessingState 
 
 #[tauri::command]
 pub fn start_recording(app: AppHandle, state: State<'_, PipelineState>) -> Result<(), String> {
-    state.start_listening(&app)
+    let started = Instant::now();
+    let result = state.start_listening(&app);
+    tracing::info!(
+        target: "forge.performance",
+        operation = "recording.start",
+        elapsed_ms = started.elapsed().as_millis() as u64,
+        success = result.is_ok(),
+    );
+    result
 }
 
 #[tauri::command]
@@ -48,29 +57,48 @@ pub fn update_settings(
     settings: AppSettings,
     state: State<'_, PipelineState>,
 ) -> Result<(), String> {
-    // 1. Sync OS startup autostart state
-    let _ = crate::set_autostart(settings.launch_at_startup);
+    let started = Instant::now();
+    let current_settings = state.settings.lock().unwrap().clone();
+    let update_plan = settings_update_plan(&current_settings, &settings);
 
-    // 2. Always save settings to disk and in-memory state
+    // Only touch OS integrations when their corresponding setting changed.
+    if update_plan.update_autostart {
+        crate::set_autostart(settings.launch_at_startup)?;
+    }
+
+    if update_plan.update_hotkey {
+        crate::register_global_hotkey(&app, &settings.hotkey)?;
+    }
+
+    // Persist settings and update in-memory state after external validation.
     settings.save();
     {
         let mut s = state.settings.lock().unwrap();
         *s = settings.clone();
     }
 
-    // 3. Dynamically update OS global hotkey registration
-    let reg_res = crate::register_global_hotkey(&app, &settings.hotkey);
-    if let Err(err_msg) = reg_res {
-        println!("[Settings] Hotkey registration warning: {}", err_msg);
-        return Err(err_msg);
-    }
-
+    tracing::info!(
+        target: "forge.performance",
+        operation = "settings.update",
+        update_autostart = update_plan.update_autostart,
+        update_hotkey = update_plan.update_hotkey,
+        elapsed_ms = started.elapsed().as_millis() as u64,
+        success = true,
+    );
     Ok(())
 }
 
 #[tauri::command]
 pub fn get_audio_devices() -> Result<Vec<AudioDeviceInfo>, String> {
-    list_input_devices().map_err(|e| e.to_string())
+    let started = Instant::now();
+    let result = list_input_devices().map_err(|e| e.to_string());
+    tracing::info!(
+        target: "forge.performance",
+        operation = "audio.devices.list",
+        elapsed_ms = started.elapsed().as_millis() as u64,
+        success = result.is_ok(),
+    );
+    result
 }
 
 #[tauri::command]
@@ -112,10 +140,21 @@ pub fn list_history(
     search: Option<String>,
     state: State<'_, PipelineState>,
 ) -> Result<Vec<HistoryRecord>, String> {
-    state
+    let started = Instant::now();
+    let result = state
         .storage
         .list_records(limit, search.as_deref())
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string());
+    tracing::info!(
+        target: "forge.performance",
+        operation = "history.list",
+        limit,
+        has_search = search.is_some(),
+        result_count = result.as_ref().map(|records| records.len()).unwrap_or(0),
+        elapsed_ms = started.elapsed().as_millis() as u64,
+        success = result.is_ok(),
+    );
+    result
 }
 
 #[tauri::command]

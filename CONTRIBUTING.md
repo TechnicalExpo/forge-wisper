@@ -73,7 +73,31 @@ cargo test --package forge-cleanup
 
 # Build the frontend production bundle
 pnpm build
+
+# Enforce the Rust lint gate used by this repository
+cargo clippy --workspace --all-targets -- -D warnings
+
+# Check Rust formatting without rewriting unrelated files
+cargo fmt --all -- --check
 ```
+
+## 🌿 Branch And Merge Rules
+
+Do not work directly on `main`. Start from an up-to-date `main` and create one focused branch for each fix, feature, performance change, documentation change, or release task:
+
+```bash
+git switch main
+```
+
+Push the branch and open a pull request when review is required. Merge only after tests, Clippy, TypeScript/build checks, and relevant manual verification pass. After merging, update `main` before creating the next branch. See [`AGENTS.md`](AGENTS.md) for the complete mandatory workflow.
+
+## 📦 Versioning And Changelog
+
+Forge Wisper follows Semantic Versioning. Every user-visible update must bump the synchronized application version in the root `package.json`, workspace `Cargo.toml`, desktop `package.json`, and Tauri configuration, and must add an entry to [`CHANGELOG.md`](CHANGELOG.md). Patch releases are used for bug fixes, performance fixes, and documentation-only updates unless the change requires a larger SemVer increment.
+
+## 🔐 LPGS Review
+
+Before merging or releasing, review the License, Privacy, Governance, and Security checklist in [`AGENTS.md`](AGENTS.md). In particular, do not commit secrets, log credentials or raw audio, add dependencies without license review, or weaken OS security controls to bypass build/runtime problems.
 
 ---
 

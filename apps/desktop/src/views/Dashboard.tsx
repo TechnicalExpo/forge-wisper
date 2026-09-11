@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { api } from "../lib/tauri";
+import { setAppSettings, useAppStore } from "../state/appStore";
+import { startMicrophoneLevelPolling } from "../lib/microphonePolling";
 import type {
-  AppSettings,
   AudioDeviceInfo,
   FormattingMode,
   HistoryRecord,
@@ -27,7 +28,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const { settings, processingState: sharedProcessingState } = useAppStore();
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [procState, setProcState] = useState<ProcessingState>("Idle");
   const [audioDevices, setAudioDevices] = useState<AudioDeviceInfo[]>([]);
@@ -61,12 +62,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   useEffect(() => {
     loadData();
-    const unlisten = api.onStateChange(({ state }) => {
-      setProcState(state);
-      if (state === "Success" || state === "Idle" || state === "Error") {
-        loadData();
-      }
-    });
 
     // Close dropdowns on outside click
     const handleOutsideClick = (e: MouseEvent) => {
@@ -88,10 +83,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     window.addEventListener("click", handleOutsideClick);
 
     return () => {
-      unlisten.then((fn) => fn());
       window.removeEventListener("click", handleOutsideClick);
     };
   }, []);
+
+  useEffect(() => {
+    setProcState(sharedProcessingState);
+    if (["Success", "Idle", "Error"].includes(sharedProcessingState)) {
+      void loadData();
+    }
+  }, [sharedProcessingState]);
 
   // Recalculate metrics whenever allHistoryRecords or timeframe changes
   useEffect(() => {
@@ -141,14 +142,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   const loadData = async () => {
     try {
-      const [s, allHistory, st, devices] = await Promise.all([
-        api.getSettings(),
+      const [allHistory, st, devices] = await Promise.all([
         api.listHistory(100),
         api.getProcessingState(),
         api.getAudioDevices().catch(() => [] as AudioDeviceInfo[]),
       ]);
 
-      setSettings(s);
       setAllHistoryRecords(allHistory);
       setHistory(allHistory.slice(0, 5));
       setProcState(st);
@@ -184,16 +183,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       setAudioLevel(0);
       return;
     }
-    const interval = setInterval(async () => {
-      try {
-        const rms = await api.getMicLevel();
-        const level = Math.min(1.0, Math.max(0.05, rms * 8.0));
-        setAudioLevel(level);
-      } catch {
-        // ignore
-      }
-    }, 40);
-    return () => clearInterval(interval);
+    return startMicrophoneLevelPolling(api.getMicLevel, (rms) => {
+      const level = Math.min(1.0, Math.max(0.05, rms * 8.0));
+      setAudioLevel(level);
+    });
   }, [procState]);
 
   const toggleRecording = async (e?: React.MouseEvent) => {
@@ -249,7 +242,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     const updated = { ...settings, formatting_mode: mode };
     try {
       await api.updateSettings(updated);
-      setSettings(updated);
+      setAppSettings(updated);
       setShowModeDropdown(false);
     } catch (err) {
       console.error("Failed to update mode:", err);
@@ -266,7 +259,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     const updated = { ...settings, provider, model: defaultModel };
     try {
       await api.updateSettings(updated);
-      setSettings(updated);
+      setAppSettings(updated);
     } catch (err) {
       console.error("Failed to update provider:", err);
     }
@@ -277,7 +270,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     const updated = { ...settings, microphone: micName };
     try {
       await api.updateSettings(updated);
-      setSettings(updated);
+      setAppSettings(updated);
       setShowMicDropdown(false);
     } catch (err) {
       console.error("Failed to update microphone:", err);

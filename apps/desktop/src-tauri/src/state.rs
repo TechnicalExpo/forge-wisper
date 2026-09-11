@@ -48,6 +48,19 @@ pub struct AppSettings {
     pub launch_at_startup: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SettingsUpdatePlan {
+    pub update_autostart: bool,
+    pub update_hotkey: bool,
+}
+
+pub fn settings_update_plan(current: &AppSettings, next: &AppSettings) -> SettingsUpdatePlan {
+    SettingsUpdatePlan {
+        update_autostart: current.launch_at_startup != next.launch_at_startup,
+        update_hotkey: current.hotkey != next.hotkey,
+    }
+}
+
 fn default_theme() -> String {
     "light".to_string()
 }
@@ -151,6 +164,30 @@ impl PipelineState {
     }
 
     pub fn set_state(&self, app: &AppHandle, new_state: ProcessingState, err_msg: Option<String>) {
+        let started = Instant::now();
+        let was_recorder_active = {
+            let state_guard = self.current_state.lock().unwrap();
+            matches!(
+                *state_guard,
+                ProcessingState::Listening
+                    | ProcessingState::Stopping
+                    | ProcessingState::Transcribing
+                    | ProcessingState::Cleaning
+                    | ProcessingState::Structuring
+                    | ProcessingState::Verifying
+                    | ProcessingState::Inserting
+            )
+        };
+        let is_recorder_active = matches!(
+            new_state,
+            ProcessingState::Listening
+                | ProcessingState::Stopping
+                | ProcessingState::Transcribing
+                | ProcessingState::Cleaning
+                | ProcessingState::Structuring
+                | ProcessingState::Verifying
+                | ProcessingState::Inserting
+        );
         {
             let mut state_guard = self.current_state.lock().unwrap();
             *state_guard = new_state;
@@ -170,17 +207,24 @@ impl PipelineState {
                 | ProcessingState::Structuring
                 | ProcessingState::Verifying
                 | ProcessingState::Inserting => {
-                    // Position at bottom center of current/primary monitor
-                    if let Ok(Some(monitor)) = recorder_win.current_monitor() {
-                        let screen_size = monitor.size();
-                        let scale = monitor.scale_factor();
-                        let win_w = (110.0 * scale) as i32;
-                        let win_h = (36.0 * scale) as i32;
-                        let x = monitor.position().x + (screen_size.width as i32 - win_w) / 2;
-                        let y = monitor.position().y + (screen_size.height as i32 - win_h) - (60.0 * scale) as i32;
-                        let _ = recorder_win.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
+                    if !was_recorder_active {
+                        // Position once when the recorder becomes active.
+                        if let Ok(Some(monitor)) = recorder_win.current_monitor() {
+                            let screen_size = monitor.size();
+                            let scale = monitor.scale_factor();
+                            let win_w = (110.0 * scale) as i32;
+                            let win_h = (36.0 * scale) as i32;
+                            let x = monitor.position().x
+                                + (screen_size.width as i32 - win_w) / 2;
+                            let y = monitor.position().y
+                                + (screen_size.height as i32 - win_h)
+                                - (60.0 * scale) as i32;
+                            let _ = recorder_win.set_position(tauri::Position::Physical(
+                                tauri::PhysicalPosition { x, y },
+                            ));
+                        }
+                        let _ = recorder_win.show();
                     }
-                    let _ = recorder_win.show();
                 }
                 ProcessingState::Success | ProcessingState::Error | ProcessingState::Cancelled => {
                     // Stay visible briefly then hide
@@ -203,6 +247,13 @@ impl PipelineState {
             "state": new_state,
             "error": err_msg
         }));
+        tracing::debug!(
+            target: "forge.performance",
+            operation = "processing.state_transition",
+            state = ?new_state,
+            elapsed_ms = started.elapsed().as_millis() as u64,
+            recorder_activated = !was_recorder_active && is_recorder_active,
+        );
     }
 
     pub fn start_listening(&self, app: &AppHandle) -> Result<(), String> {
@@ -234,6 +285,7 @@ impl PipelineState {
     }
 
     pub async fn stop_and_process(&self, app: AppHandle) -> Result<String, String> {
+        let pipeline_started = Instant::now();
         if !self.is_active_recording.load(Ordering::SeqCst) {
             return Ok(String::new());
         }
@@ -254,6 +306,7 @@ impl PipelineState {
         let start_time = Instant::now();
 
         // 1. Encode audio
+        let encode_started = Instant::now();
         let wav_bytes = match rec.stop_and_encode_wav() {
             Ok(bytes) => bytes,
             Err(e) => {
@@ -262,6 +315,12 @@ impl PipelineState {
                 return Err(err);
             }
         };
+        tracing::info!(
+            target: "forge.performance",
+            operation = "pipeline.audio_encode",
+            audio_bytes = wav_bytes.len(),
+            elapsed_ms = encode_started.elapsed().as_millis() as u64,
+        );
 
         let (provider_name, model_name, fmt_mode, dict, snippets, retention) = {
             let s = self.settings.lock().unwrap();
@@ -272,6 +331,7 @@ impl PipelineState {
 
         // 2. Transcribe
         self.set_state(&app, ProcessingState::Transcribing, None);
+        let transcription_started = Instant::now();
         let transcript_result = match provider_name.as_str() {
             "local-whisper" => {
                 self.local_provider
@@ -291,6 +351,14 @@ impl PipelineState {
                     .await
             }
         };
+        tracing::info!(
+            target: "forge.performance",
+            operation = "pipeline.transcription",
+            provider = %provider_name,
+            model = %model_name,
+            elapsed_ms = transcription_started.elapsed().as_millis() as u64,
+            success = transcript_result.is_ok(),
+        );
 
         let raw_transcript = match transcript_result {
             Ok(t) => t,
@@ -309,6 +377,7 @@ impl PipelineState {
             snippets,
         };
 
+        let cleanup_started = Instant::now();
         let cleaned = match RuleBasedCleaner::clean(&raw_transcript, &cleanup_opts) {
             Ok(c) => c,
             Err(e) => {
@@ -317,6 +386,12 @@ impl PipelineState {
                 return Err(err);
             }
         };
+        tracing::info!(
+            target: "forge.performance",
+            operation = "pipeline.cleanup",
+            elapsed_ms = cleanup_started.elapsed().as_millis() as u64,
+            success = true,
+        );
 
         if cleaned.cleaned_text.trim().is_empty() {
             println!("[Forge Pipeline] Cleaned text is empty (no audible speech transcribed).");
@@ -334,7 +409,14 @@ impl PipelineState {
 
         // 4. Verify
         self.set_state(&app, ProcessingState::Verifying, None);
+        let verification_started = Instant::now();
         let verification = VerificationEngine::verify(&cleaned.raw_text, &cleaned.cleaned_text);
+        tracing::info!(
+            target: "forge.performance",
+            operation = "pipeline.verification",
+            status = ?verification.status,
+            elapsed_ms = verification_started.elapsed().as_millis() as u64,
+        );
 
         let can_paste = VerificationEngine::can_safe_paste(verification.status);
         let duration_ms = start_time.elapsed().as_millis() as u64;
@@ -351,7 +433,14 @@ impl PipelineState {
             duration_ms,
             verification_status: format!("{:?}", verification.status),
         };
-        let _ = self.storage.insert_record(&history_record, retention);
+        let storage_started = Instant::now();
+        let storage_result = self.storage.insert_record(&history_record, retention);
+        tracing::info!(
+            target: "forge.performance",
+            operation = "pipeline.history_insert",
+            elapsed_ms = storage_started.elapsed().as_millis() as u64,
+            success = storage_result.is_ok(),
+        );
 
         // 6. Safe Paste / Output
         if can_paste {
@@ -369,14 +458,27 @@ impl PipelineState {
             #[cfg(not(target_os = "macos"))]
             let outcome_result = OutputEngine::paste_text(&cleaned.cleaned_text);
 
+            let output_started = Instant::now();
             match outcome_result {
                 Ok(outcome) => {
+                    tracing::info!(
+                        target: "forge.performance",
+                        operation = "pipeline.output",
+                        elapsed_ms = output_started.elapsed().as_millis() as u64,
+                        success = true,
+                    );
                     self.set_state(&app, ProcessingState::Success, None);
                     if outcome == PasteOutcome::CopiedToClipboardFallback {
                         let _ = app.emit("forge://toast", "Text copied to clipboard");
                     }
                 }
                 Err(e) => {
+                    tracing::info!(
+                        target: "forge.performance",
+                        operation = "pipeline.output",
+                        elapsed_ms = output_started.elapsed().as_millis() as u64,
+                        success = false,
+                    );
                     let err = format!("Paste output error: {}", e);
                     self.set_state(&app, ProcessingState::Error, Some(err.clone()));
                 }
@@ -387,6 +489,13 @@ impl PipelineState {
             self.set_state(&app, ProcessingState::Success, None);
             let _ = app.emit("forge://toast", "Text copied to clipboard (Verification Review)");
         }
+
+        tracing::info!(
+            target: "forge.performance",
+            operation = "pipeline.total",
+            elapsed_ms = pipeline_started.elapsed().as_millis() as u64,
+            success = true,
+        );
 
         Ok(cleaned.cleaned_text)
     }
@@ -404,5 +513,51 @@ impl PipelineState {
 impl Default for PipelineState {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod settings_tests {
+    use super::{settings_update_plan, AppSettings};
+
+    #[test]
+    fn unrelated_settings_do_not_schedule_os_side_effects() {
+        let current = AppSettings::default();
+        let mut next = current.clone();
+        next.theme = "dark".to_string();
+        next.formatting_mode = forge_cleanup::FormattingMode::Clean;
+
+        assert_eq!(
+            settings_update_plan(&current, &next),
+            super::SettingsUpdatePlan {
+                update_autostart: false,
+                update_hotkey: false,
+            }
+        );
+    }
+
+    #[test]
+    fn only_changed_os_settings_schedule_their_side_effects() {
+        let current = AppSettings::default();
+
+        let mut startup_changed = current.clone();
+        startup_changed.launch_at_startup = true;
+        assert_eq!(
+            settings_update_plan(&current, &startup_changed),
+            super::SettingsUpdatePlan {
+                update_autostart: true,
+                update_hotkey: false,
+            }
+        );
+
+        let mut hotkey_changed = current.clone();
+        hotkey_changed.hotkey = "Control+Alt+Space".to_string();
+        assert_eq!(
+            settings_update_plan(&current, &hotkey_changed),
+            super::SettingsUpdatePlan {
+                update_autostart: false,
+                update_hotkey: true,
+            }
+        );
     }
 }

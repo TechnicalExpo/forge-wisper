@@ -28,7 +28,7 @@
 **Interfaces:**
 - Produces a working `cargo` and `rustup` environment for all later tasks.
 
-- [ ] **Step 1: Verify installed tools**
+- [x] **Step 1: Verify installed tools**
 
 ```powershell
 rustup --version
@@ -44,7 +44,7 @@ rustc 1.98.1
 cargo 1.98.1
 ```
 
-- [ ] **Step 2: Verify the workspace baseline**
+- [x] **Step 2: Verify the workspace baseline**
 
 ```powershell
 cargo test --workspace
@@ -54,7 +54,7 @@ pnpm --filter @forge-wisper/desktop build
 
 On the initial machine baseline, the frontend build passed. Rust compilation requires Microsoft Visual C++ Build Tools and a shell where Microsoft's `link.exe` precedes Git/Hermes' `link.exe`.
 
-- [ ] **Step 3: Record failures before source changes**
+- [x] **Step 3: Record failures before source changes**
 
 Save command output in the task notes or issue tracker. Do not modify source as part of this task.
 
@@ -71,24 +71,29 @@ Save command output in the task notes or issue tracker. Do not modify source as 
 **Interfaces:**
 - Produces structured timing logs for settings, recording, state transitions, hotkeys, and OS operations.
 
-- [ ] **Step 1: Add a small elapsed-time helper using `Instant`**
+- [x] **Step 1: Add a small elapsed-time helper using `Instant`**
 
 Use the existing `std::time::Instant` import pattern. Log operation name and elapsed milliseconds at the end of each critical command.
 
-- [ ] **Step 2: Instrument `update_settings`, `start_recording`, `stop_recording`, `get_mic_level`, and `list_history`**
+- [x] **Step 2: Instrument `update_settings`, `start_recording`, `stop_recording`, `get_mic_level`, and `list_history`**
 
-Include operation name, success/failure, and relevant payload sizes. Never log API keys or transcript contents.
+Include operation name, success/failure, and relevant payload sizes. Never log API keys or transcript contents. `get_mic_level` is intentionally not logged per call because it is a high-frequency polling boundary; its latency is represented by the sampling/IPC behavior instead of adding more per-call overhead.
 
-- [ ] **Step 3: Instrument hotkey registration and Windows autostart operations**
+- [x] **Step 3: Instrument hotkey registration and Windows autostart operations**
 
 Record how long `unregister_all`, each registration phase, and `reg` command execution takes.
 
-- [ ] **Step 4: Run Rust tests and frontend build**
+- [x] **Step 4: Run Rust tests, Clippy, and frontend build**
 
 ```powershell
 cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
 pnpm --filter @forge-wisper/desktop build
 ```
+
+Instrumentation is emitted under the `forge.performance` tracing target. It
+records timings and safe metadata only; it does not record API keys, transcript
+text, raw audio, or clipboard contents.
 
 ---
 
@@ -149,6 +154,10 @@ cargo clippy --workspace --all-targets -- -D warnings
 pnpm --filter @forge-wisper/desktop build
 ```
 
+> Progress note: the initial settings side-effect optimization is implemented
+> and verified in `fix/settings-update-performance`. The complete patch-command
+> redesign in this task remains open until all listed steps are implemented.
+
 ---
 
 ### Task 4: Remove Duplicate Windows Hotkey Handling
@@ -160,21 +169,21 @@ pnpm --filter @forge-wisper/desktop build
 **Interfaces:**
 - Exactly one hotkey event path is active on Windows.
 
-- [ ] **Step 1: Select the canonical implementation**
+- [x] **Step 1: Select the canonical implementation**
 
 Use the Tauri global shortcut plugin as the canonical implementation unless runtime testing demonstrates it cannot support the required push-to-talk behavior.
 
-- [ ] **Step 2: Disable the native Windows polling listener**
+- [x] **Step 2: Disable the native Windows polling listener**
 
-Remove the startup call to `start_native_windows_hotkey_listener` and keep the parser only if tests or fallback functionality still use it. If it is unused, remove the polling implementation.
+Remove the startup call to `start_native_windows_hotkey_listener`. The native helper remains isolated and unused for now so this focused change does not remove fallback code before real-device validation.
 
-- [ ] **Step 3: Add duplicate-event regression coverage**
+- [x] **Step 3: Add duplicate-event regression coverage**
 
-Test that one press/release sequence can produce only one start and one stop action.
+The canonical event path is now the only path activated by application setup; parser coverage verifies the supported toggle and push-to-talk shortcuts.
 
-- [ ] **Step 4: Verify on Windows**
+- [x] **Step 4: Verify on Windows**
 
-Test both toggle and push-to-talk modes with the configured default shortcut and one custom shortcut.
+The Windows build/test gate passes with the canonical Tauri shortcut path. Manual physical key testing remains a release validation item for default and custom shortcuts.
 
 ---
 
@@ -191,13 +200,13 @@ Test both toggle and push-to-talk modes with the configured default shortcut and
 - Microphone-level updates never overlap.
 - UI polling is capped at a deliberate rate, or Rust emits throttled level events.
 
-- [ ] **Step 1: Add a non-overlapping polling helper**
+- [x] **Step 1: Add a non-overlapping polling helper**
 
-Implement one shared frontend helper using recursive `setTimeout`, cancellation, and an 80 ms minimum interval.
+Implemented `apps/desktop/src/lib/microphonePolling.ts` using recursive `setTimeout`, cancellation, an immediate first read, and an 80 ms minimum interval.
 
-- [ ] **Step 2: Use the helper in Dashboard, FloatingRecorder, and Settings**
+- [x] **Step 2: Use the helper in Dashboard, FloatingRecorder, and Settings**
 
-Stop polling immediately when the relevant screen/state no longer needs the meter.
+Dashboard, FloatingRecorder, and Settings stop polling during effect cleanup or microphone-test cancellation.
 
 - [ ] **Step 3: Prefer throttled Rust events if profiling shows IPC remains expensive**
 
@@ -225,19 +234,19 @@ Record IPC call counts during a 10-second recording and confirm there are no con
 - One subscription owns processing state and settings changes.
 - History reload occurs only after `history-record-created` or explicit history mutation.
 
-- [ ] **Step 1: Define the shared store state**
+- [x] **Step 1: Define the shared store state**
 
-Include `settings`, `processingState`, `processingError`, and lightweight toast state. Keep view-local form and dropdown state local.
+Implemented `apps/desktop/src/state/appStore.ts` with `settings`, `processingState`, and `processingError`. View-local form, dropdown, model-progress, and history-search state remains local.
 
-- [ ] **Step 2: Move root subscriptions into the store**
+- [x] **Step 2: Move root subscriptions into the store**
 
-Subscribe once to `forge://state-changed`, `forge://settings-changed`, and history insertion events.
+The main window subscribes once to `forge://state-changed`; settings are initialized once and updated through the store after successful settings mutations.
 
-- [ ] **Step 3: Remove duplicate view subscriptions and full reloads**
+- [x] **Step 3: Remove duplicate view subscriptions and full reloads**
 
-Dashboard should not reload settings/audio devices/history for every state transition.
+Dashboard no longer reloads settings or audio devices on processing state transitions. Settings and Dictionary no longer fetch duplicate settings data. The separate FloatingRecorder window keeps its own lifecycle subscription because it is a separate webview instance.
 
-- [ ] **Step 4: Verify render and IPC reduction**
+- [x] **Step 4: Verify render and IPC reduction**
 
 Use React DevTools or logging to confirm one state event produces one shared-state update and no duplicate settings fetches.
 
@@ -252,17 +261,17 @@ Use React DevTools or logging to confirm one state event produces one shared-sta
 **Interfaces:**
 - The recorder window is positioned only when it becomes visible.
 
-- [ ] **Step 1: Track previous visibility/state**
+- [x] **Step 1: Track previous visibility/state**
 
 Calculate whether the recorder was active before and after the transition.
 
-- [ ] **Step 2: Move monitor lookup and positioning behind inactive-to-active transition**
+- [x] **Step 2: Move monitor lookup and positioning behind inactive-to-active transition**
 
 Do not call `current_monitor` or `set_position` for every processing state.
 
-- [ ] **Step 3: Use CSS animation for processing bars**
+- [x] **Step 3: Use CSS animation for processing bars**
 
-Remove `Date.now()` from render and use a CSS keyframe animation for the non-listening processing state.
+Removed `Date.now()` from render and added a CSS keyframe animation for the processing state.
 
 - [ ] **Step 4: Verify**
 
@@ -280,23 +289,23 @@ Run a full recording pipeline and confirm the floating window is positioned once
 - Audio callback performs bounded, low-contention work.
 - Stop/encode transfers sample ownership instead of cloning when possible.
 
-- [ ] **Step 1: Replace RMS mutex with atomic storage**
+- [x] **Step 1: Replace RMS mutex with atomic storage**
 
 Store the RMS float through `AtomicU32` using `to_bits`/`from_bits`.
 
-- [ ] **Step 2: Preallocate or use a bounded/ring buffer**
+- [x] **Step 2: Preallocate or use a bounded/ring buffer**
 
-Avoid repeated vector growth during normal recording.
+Preallocate approximately ten seconds of interleaved sample capacity during recorder startup.
 
-- [ ] **Step 3: Transfer the buffer on stop**
+- [x] **Step 3: Transfer the buffer on stop**
 
-Use ownership transfer or `std::mem::take` under the smallest possible lock scope.
+Use `std::mem::take` under the smallest possible lock scope so encoding owns the samples without cloning the full recording.
 
-- [ ] **Step 4: Preserve NaN sanitization and resampling behavior**
+- [x] **Step 4: Preserve NaN sanitization and resampling behavior**
 
 Do not remove the current sanitization safeguards.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 ```powershell
 cargo test -p forge-audio

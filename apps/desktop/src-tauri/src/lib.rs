@@ -9,6 +9,7 @@ use tauri::{
     Manager, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use std::time::Instant;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -76,6 +77,13 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            let _ = tracing_subscriber::fmt()
+                .with_env_filter(
+                    tracing_subscriber::EnvFilter::try_from_default_env()
+                        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+                )
+                .try_init();
+
             // Register configured global hotkey from persisted settings
             let state = app.state::<PipelineState>();
             let initial_hotkey = {
@@ -164,6 +172,19 @@ pub fn run() {
 }
 
 pub fn set_autostart(_enable: bool) -> Result<(), String> {
+    let started = Instant::now();
+    let result = set_autostart_inner(_enable);
+    tracing::info!(
+        target: "forge.performance",
+        operation = "autostart.update",
+        enabled = _enable,
+        elapsed_ms = started.elapsed().as_millis() as u64,
+        success = result.is_ok(),
+    );
+    result
+}
+
+fn set_autostart_inner(_enable: bool) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         use std::process::Command;
@@ -339,6 +360,21 @@ pub fn parse_shortcut_explicit(s: &str) -> Option<Shortcut> {
 }
 
 pub fn register_global_hotkey<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    hotkey_str: &str,
+) -> Result<String, String> {
+    let started = Instant::now();
+    let result = register_global_hotkey_inner(app, hotkey_str);
+    tracing::info!(
+        target: "forge.performance",
+        operation = "hotkey.register",
+        elapsed_ms = started.elapsed().as_millis() as u64,
+        success = result.is_ok(),
+    );
+    result
+}
+
+fn register_global_hotkey_inner<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     hotkey_str: &str,
 ) -> Result<String, String> {

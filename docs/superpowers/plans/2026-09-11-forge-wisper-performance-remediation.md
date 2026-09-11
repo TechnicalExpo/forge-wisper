@@ -71,24 +71,29 @@ Save command output in the task notes or issue tracker. Do not modify source as 
 **Interfaces:**
 - Produces structured timing logs for settings, recording, state transitions, hotkeys, and OS operations.
 
-- [ ] **Step 1: Add a small elapsed-time helper using `Instant`**
+- [x] **Step 1: Add a small elapsed-time helper using `Instant`**
 
 Use the existing `std::time::Instant` import pattern. Log operation name and elapsed milliseconds at the end of each critical command.
 
-- [ ] **Step 2: Instrument `update_settings`, `start_recording`, `stop_recording`, `get_mic_level`, and `list_history`**
+- [x] **Step 2: Instrument `update_settings`, `start_recording`, `stop_recording`, `get_mic_level`, and `list_history`**
 
-Include operation name, success/failure, and relevant payload sizes. Never log API keys or transcript contents.
+Include operation name, success/failure, and relevant payload sizes. Never log API keys or transcript contents. `get_mic_level` is intentionally not logged per call because it is a high-frequency polling boundary; its latency is represented by the sampling/IPC behavior instead of adding more per-call overhead.
 
-- [ ] **Step 3: Instrument hotkey registration and Windows autostart operations**
+- [x] **Step 3: Instrument hotkey registration and Windows autostart operations**
 
 Record how long `unregister_all`, each registration phase, and `reg` command execution takes.
 
-- [ ] **Step 4: Run Rust tests and frontend build**
+- [x] **Step 4: Run Rust tests, Clippy, and frontend build**
 
 ```powershell
 cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
 pnpm --filter @forge-wisper/desktop build
 ```
+
+Instrumentation is emitted under the `forge.performance` tracing target. It
+records timings and safe metadata only; it does not record API keys, transcript
+text, raw audio, or clipboard contents.
 
 ---
 

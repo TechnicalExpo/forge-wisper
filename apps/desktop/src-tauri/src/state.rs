@@ -400,3 +400,9 @@ impl PipelineState {
         self.set_state(app, ProcessingState::Cancelled, None);
     }
 }
+
+impl Default for PipelineState {
+    fn default() -> Self {
+        Self::new()
+    }
+}

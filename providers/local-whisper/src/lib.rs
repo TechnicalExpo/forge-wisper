@@ -349,6 +349,12 @@ impl ModelManager {
     }
 }
 
+impl Default for ModelManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(windows)]
 fn get_system_ram_gb() -> u32 {
     #[repr(C)]

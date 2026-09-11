@@ -392,42 +392,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
 
               {/* Local Whisper Option */}
               <div
-                onClick={() =>
-                  handleSave({
-                    ...settings,
-                    provider: "local-whisper",
-                    model: "base",
-                  })
-                }
-                className={`forge-card p-4 rounded-[8px] transition-all cursor-pointer bg-[var(--surface-primary)] border flex flex-col justify-between ${
-                  settings.provider === "local-whisper"
-                    ? "border-[var(--accent)] bg-[var(--accent-subtle)]"
-                    : "border-[var(--border)] hover:border-[var(--accent-border)]"
-                }`}
+                className="forge-card p-4 rounded-[8px] transition-all bg-[var(--surface-primary)] border border-[var(--border)] opacity-70 flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2.5">
                     <div className="p-2 rounded-[6px] bg-[var(--surface-elevated)] text-[var(--accent)]">
                       <Cpu className="w-4 h-4" />
                     </div>
-                    {settings.provider === "local-whisper" ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[10px] font-mono font-medium bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent-border)]">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-                        ACTIVE
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-[var(--text-muted)] font-mono">100% Offline</span>
-                    )}
+                    <span className="text-[11px] text-[var(--warning)] font-mono">Coming soon</span>
                   </div>
                   <div className="font-medium text-[14px] text-[var(--text-primary)]">Local Offline Whisper</div>
                   <p className="text-[13px] text-[var(--text-secondary)] mt-1 leading-relaxed">
-                    100% private offline transcription running on your local machine using GGML model binaries.
+                    Offline transcription is planned. The local runtime is not bundled in this build yet.
                   </p>
                 </div>
 
                 <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-[12px] font-mono text-[var(--text-secondary)]">
-                  <span>Zero internet needed</span>
-                  <span className="text-[var(--accent)] font-medium">100% Private</span>
+                  <span>Runtime unavailable</span>
+                  <span className="text-[var(--warning)] font-medium">Not selectable</span>
                 </div>
               </div>
             </div>

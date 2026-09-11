@@ -445,14 +445,15 @@ impl HardwareDetector {
 }
 
 pub struct LocalWhisperProvider {
-    model_manager: Arc<ModelManager>,
     active_model_id: Arc<Mutex<String>>,
 }
+
+const LOCAL_RUNTIME_UNAVAILABLE: &str =
+    "Local Whisper runtime is not bundled yet. Select Groq Cloud or wait for a future offline runtime release.";
 
 impl LocalWhisperProvider {
     pub fn new() -> Self {
         Self {
-            model_manager: Arc::new(ModelManager::new()),
             active_model_id: Arc::new(Mutex::new("base".to_string())),
         }
     }
@@ -514,32 +515,30 @@ impl TranscriptionProvider for LocalWhisperProvider {
             return Err(ProviderError::InvalidAudio("Audio data is empty".to_string()));
         }
 
-        let requested_id = options
-            .model
-            .clone()
-            .unwrap_or_else(|| "base".to_string());
+        let _ = options;
+        Err(ProviderError::ModelError(LOCAL_RUNTIME_UNAVAILABLE.to_string()))
+    }
+}
 
-        let models = self.model_manager.list_available_models();
-        let target_model = models.iter().find(|m| m.id == requested_id);
+#[cfg(test)]
+mod tests {
+    use super::{LocalWhisperProvider, LOCAL_RUNTIME_UNAVAILABLE};
+    use forge_transcription::{AudioData, TranscriptionOptions, TranscriptionProvider};
 
-        let effective_model_id = if target_model.map(|m| m.is_installed).unwrap_or(false) {
-            requested_id
-        } else if let Some(auto_picked) = self.model_manager.auto_pick_installed_model() {
-            // Auto-picked already installed model
-            auto_picked.id
-        } else {
-            return Err(ProviderError::ModelError(
-                "No offline Whisper model found. Please download a model from Model Manager (e.g. Whisper Base or Tiny) or place ggml-*.bin in the models folder.".to_string(),
-            ));
-        };
+    #[tokio::test]
+    async fn does_not_return_placeholder_transcription_without_runtime() {
+        let provider = LocalWhisperProvider::new();
+        let result = provider
+            .transcribe(
+                AudioData::new(vec![1, 2, 3], 16_000, 1, 10),
+                TranscriptionOptions::default(),
+            )
+            .await;
 
-        Ok(Transcript {
-            text: "Local transcription processed successfully.".to_string(),
-            language: options.language.unwrap_or_else(|| "en".to_string()),
-            provider: "local-whisper".to_string(),
-            model: effective_model_id,
-            duration_ms: audio.duration_ms,
-            confidence: Some(0.96),
-        })
+        assert!(matches!(
+            result,
+            Err(forge_transcription::ProviderError::ModelError(message))
+                if message == LOCAL_RUNTIME_UNAVAILABLE
+        ));
     }
 }

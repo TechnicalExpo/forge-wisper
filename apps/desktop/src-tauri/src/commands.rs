@@ -57,6 +57,13 @@ pub fn update_settings(
     settings: AppSettings,
     state: State<'_, PipelineState>,
 ) -> Result<(), String> {
+    if settings.provider == "local-whisper" {
+        return Err(
+            "Local Whisper is not available in this build yet. Select Groq Cloud instead."
+                .to_string(),
+        );
+    }
+
     let started = Instant::now();
     let current_settings = state.settings.lock().unwrap().clone();
     let update_plan = settings_update_plan(&current_settings, &settings);

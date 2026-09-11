@@ -9,6 +9,14 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.1.6] - 2026-09-11
+
+### Fixed
+
+- Removed the fake Local Whisper success transcript.
+- Blocked Local Whisper selection until a real offline runtime is bundled.
+- Migrated persisted Local Whisper settings back to Groq Cloud instead of silently using a non-functional provider.
+
 ## [0.1.5] - 2026-09-11
 
 ### Performance

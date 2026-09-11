@@ -641,10 +641,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <button
                   type="button"
                   disabled
-                  title="Local Whisper is coming soon"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] font-medium text-[var(--text-muted)] opacity-60 cursor-not-allowed"
+                  onClick={() => handleUpdateProvider("local-whisper")}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] font-medium transition-all cursor-pointer ${
+                    settings?.provider === "local-whisper"
+                      ? "bg-[var(--surface-primary)] border border-[var(--accent)] text-[var(--text-primary)] shadow-2xs"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  }`}
                 >
-                  <span>Local Whisper (Soon)</span>
+                  <span>Local Whisper</span>
                 </button>
               </div>
             </div>

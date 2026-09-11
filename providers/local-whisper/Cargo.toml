@@ -16,3 +16,4 @@ tracing = { workspace = true }
 reqwest = { workspace = true }
 directories = { workspace = true }
 hound = { workspace = true }
+whisper-rs = "0.16.0"

@@ -30,7 +30,7 @@ Forge Wisper is structured as a **Cargo Workspace & pnpm Monorepo**:
   - `crates/verification`: Entity safety verification engine comparing raw transcripts with cleaned output.
 - **`providers/`**: Speech recognition engine implementations:
   - `providers/groq`: Fast cloud transcription using Groq LPUs (`whisper-large-v3-turbo`).
-  - `providers/local-whisper`: Model discovery/download boundary for the planned offline runtime; local inference is currently feature-gated until a real whisper.cpp-compatible runtime is bundled.
+  - `providers/local-whisper`: Offline on-device transcription through `whisper-rs`/whisper.cpp and downloaded GGML models.
 
 ---
 
@@ -41,6 +41,7 @@ Forge Wisper is structured as a **Cargo Workspace & pnpm Monorepo**:
 - **Rust** 1.78+ (via [rustup](https://rustup.rs/))
 - **Tauri v2 CLI**: `cargo install tauri-cli --version "^2.0.0"`
 - **Windows C++ Build Tools** (MSVC) on Windows, or standard build essentials on Linux/macOS.
+- **Local Whisper runtime builds on Windows** additionally require LLVM/Clang (`libclang.dll`) and CMake available on `PATH`.
 
 ### 2. Getting Started
 ```bash

@@ -14,7 +14,7 @@ Forge Wisper uses an appropriate technology stack for a cross-platform desktop d
 5. The floating recorder window is repositioned and shown for every pipeline state transition.
 6. Audio capture uses mutexes and copies the complete sample buffer before encoding.
 
-There are also correctness issues that should be addressed before performance tuning is considered complete. Most importantly, the Local Whisper provider currently returns hardcoded placeholder text instead of transcribing audio.
+The Local Whisper correctness issue identified in this audit is addressed on the runtime feature branch with real whisper.cpp inference and a regression test. The first runtime path is CPU-based and loads GGML models on demand; model caching and hardware acceleration remain follow-up optimizations.
 
 ## Evidence And Verification
 
@@ -82,17 +82,17 @@ The Tauri global shortcut plugin is registered and `start_native_windows_hotkey_
 
 **Recommendation:** keep one implementation per platform. Do not register the same shortcut through both systems.
 
-### P0: Local Whisper returns placeholder output
+### Resolved: Local Whisper placeholder output
 
 **File:** `providers/local-whisper/src/lib.rs:502-539`
 
 The provider checks model availability but returns:
 
 ```rust
-"Local transcription processed successfully."
+The provider now loads a compatible GGML model and runs CPU inference through `whisper-rs`.
 ```
 
-**Impact:** Local Whisper appears to work while not transcribing the user's audio.
+**Resolution:** Placeholder output was removed; missing models and inference failures return typed provider errors.
 
 **Recommendation:** integrate an actual Whisper runtime or mark the feature unavailable until implemented.
 

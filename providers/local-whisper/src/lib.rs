@@ -9,8 +9,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{create_dir_all, remove_file, File};
 use std::io::Write;
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelDownloadProgress {
@@ -445,15 +447,14 @@ impl HardwareDetector {
 }
 
 pub struct LocalWhisperProvider {
+    model_manager: Arc<ModelManager>,
     active_model_id: Arc<Mutex<String>>,
 }
 
-const LOCAL_RUNTIME_UNAVAILABLE: &str =
-    "Local Whisper runtime is not bundled yet. Select Groq Cloud or wait for a future offline runtime release.";
-
 impl LocalWhisperProvider {
-    pub fn new() -> Self {
+    pub fn new(model_manager: Arc<ModelManager>) -> Self {
         Self {
+            model_manager,
             active_model_id: Arc::new(Mutex::new("base".to_string())),
         }
     }
@@ -466,7 +467,7 @@ impl LocalWhisperProvider {
 
 impl Default for LocalWhisperProvider {
     fn default() -> Self {
-        Self::new()
+        Self::new(Arc::new(ModelManager::new()))
     }
 }
 
@@ -515,19 +516,97 @@ impl TranscriptionProvider for LocalWhisperProvider {
             return Err(ProviderError::InvalidAudio("Audio data is empty".to_string()));
         }
 
-        let _ = options;
-        Err(ProviderError::ModelError(LOCAL_RUNTIME_UNAVAILABLE.to_string()))
+        let requested_id = options.model.clone().unwrap_or_else(|| "base".to_string());
+        let models = self.model_manager.list_available_models();
+        let target_model = models.iter().find(|m| m.id == requested_id);
+        let effective_model_id = if target_model.map(|m| m.is_installed).unwrap_or(false) {
+            requested_id
+        } else if let Some(auto_picked) = self.model_manager.auto_pick_installed_model() {
+            auto_picked.id
+        } else {
+            return Err(ProviderError::ModelError(
+                "No offline Whisper model found. Download a model first.".to_string(),
+            ));
+        };
+        let model_info = models
+            .iter()
+            .find(|model| model.id == effective_model_id)
+            .ok_or_else(|| ProviderError::ModelError("Selected model is unavailable".to_string()))?;
+        let model_path = self
+            .model_manager
+            .find_model_file(&model_info.filename)
+            .ok_or_else(|| ProviderError::ModelError("Selected model file is missing".to_string()))?;
+        let language = options.language.clone().unwrap_or_else(|| "auto".to_string());
+        let inference_language = language.clone();
+        let duration_ms = audio.duration_ms;
+
+        let text = tokio::task::spawn_blocking(move || {
+            let mut reader = hound::WavReader::new(Cursor::new(audio.wav_bytes))
+                .map_err(|e| ProviderError::InvalidAudio(e.to_string()))?;
+            let spec = reader.spec();
+            if spec.sample_rate != 16_000 || spec.channels != 1 || spec.bits_per_sample != 16 {
+                return Err(ProviderError::InvalidAudio(
+                    "Local Whisper requires 16-bit mono 16 kHz WAV audio".to_string(),
+                ));
+            }
+            let samples = reader
+                .samples::<i16>()
+                .map(|sample| sample.map(|value| value as f32 / i16::MAX as f32))
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| ProviderError::InvalidAudio(e.to_string()))?;
+            let context = WhisperContext::new_with_params(
+                model_path.to_string_lossy().as_ref(),
+                WhisperContextParameters::default(),
+            )
+            .map_err(|e| ProviderError::ModelError(e.to_string()))?;
+            let mut state = context
+                .create_state()
+                .map_err(|e| ProviderError::ModelError(e.to_string()))?;
+            let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 0 });
+            params.set_print_special(false);
+            params.set_print_progress(false);
+            params.set_print_realtime(false);
+            params.set_print_timestamps(false);
+            if inference_language != "auto" {
+                params.set_language(Some(&inference_language));
+            }
+            state
+                .full(params, &samples)
+                .map_err(|e| ProviderError::InternalError(e.to_string()))?;
+            let transcript = state
+                .as_iter()
+                .map(|segment| segment.to_string())
+                .collect::<Vec<_>>()
+                .join(" ")
+                .trim()
+                .to_string();
+            if transcript.is_empty() {
+                return Err(ProviderError::InvalidAudio("No speech detected".to_string()));
+            }
+            Ok::<_, ProviderError>(transcript)
+        })
+        .await
+        .map_err(|e| ProviderError::InternalError(e.to_string()))??;
+
+        Ok(Transcript {
+            text,
+            language,
+            provider: "local-whisper".to_string(),
+            model: effective_model_id,
+            duration_ms,
+            confidence: None,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{LocalWhisperProvider, LOCAL_RUNTIME_UNAVAILABLE};
+    use super::LocalWhisperProvider;
     use forge_transcription::{AudioData, TranscriptionOptions, TranscriptionProvider};
 
     #[tokio::test]
-    async fn does_not_return_placeholder_transcription_without_runtime() {
-        let provider = LocalWhisperProvider::new();
+    async fn missing_model_returns_a_clear_error() {
+        let provider = LocalWhisperProvider::default();
         let result = provider
             .transcribe(
                 AudioData::new(vec![1, 2, 3], 16_000, 1, 10),
@@ -535,10 +614,6 @@ mod tests {
             )
             .await;
 
-        assert!(matches!(
-            result,
-            Err(forge_transcription::ProviderError::ModelError(message))
-                if message == LOCAL_RUNTIME_UNAVAILABLE
-        ));
+        assert!(matches!(result, Err(forge_transcription::ProviderError::ModelError(_))));
     }
 }

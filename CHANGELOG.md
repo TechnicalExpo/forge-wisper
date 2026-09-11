@@ -9,6 +9,13 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.2.0] - 2026-09-11
+
+### Added
+
+- Added real CPU Local Whisper inference through `whisper-rs`/whisper.cpp using downloaded GGML models.
+- Added offline local transcription support for installed models while preserving Groq Cloud as the fast default.
+
 ## [0.1.10] - 2026-09-11
 
 ### Fixed

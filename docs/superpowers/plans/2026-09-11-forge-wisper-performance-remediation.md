@@ -319,7 +319,7 @@ cargo clippy -p forge-audio --all-targets -- -D warnings
 
 ---
 
-### Task 9: Implement Or Explicitly Gate Local Whisper
+### Task 9: Implement Local Whisper Runtime
 
 **Files:**
 - Modify: `providers/local-whisper/src/lib.rs`
@@ -333,19 +333,19 @@ cargo clippy -p forge-audio --all-targets -- -D warnings
 
 - [x] **Step 1: Choose the runtime implementation**
 
-The current release chooses explicit feature gating because no Whisper runtime dependency is present. The provider must not return a fabricated transcript.
+Pinned `whisper-rs 0.16.0`, which builds whisper.cpp through the native CMake/LLVM toolchain. The provider must not return fabricated transcript text.
 
 - [x] **Step 2: Share one `Arc<ModelManager>`**
 
-The non-functional provider no longer owns an unused model manager. Model management remains available through the application model manager until runtime integration is implemented.
+`PipelineState` and `LocalWhisperProvider` now share one `Arc<ModelManager>`.
 
 - [x] **Step 3: Add provider tests**
 
-Cover the unavailable-runtime error and ensure no placeholder transcript is returned.
+Cover missing-model/inference errors and ensure no placeholder text is returned. A real-model transcript fixture remains pending because model weights are not committed to the repository.
 
 - [x] **Step 4: Update product copy**
 
-README, SECURITY, CONTRIBUTING, Settings, and Dashboard now clearly state that local inference is planned and unavailable in this release.
+README, SECURITY, CONTRIBUTING, Settings, and Dashboard document the real local inference path and its offline model-download requirement.
 
 - [x] **Step 5: Verify**
 
@@ -353,6 +353,10 @@ README, SECURITY, CONTRIBUTING, Settings, and Dashboard now clearly state that l
 cargo test -p forge-provider-local-whisper
 cargo clippy -p forge-provider-local-whisper --all-targets -- -D warnings
 ```
+
+The native runtime compiles and the missing-model error path is tested. Before
+release, run a manual real-model transcription fixture and add its measured
+latency/memory result to the release notes.
 
 ---
 

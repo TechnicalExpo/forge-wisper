@@ -344,30 +344,12 @@ impl ModelManager {
             return Err(ProviderError::ModelError(e.to_string()));
         }
 
-        let actual_size = std::fs::metadata(&part_path)
-            .map_err(|e| ProviderError::ModelError(e.to_string()))?
-            .len();
-        if actual_size != target.size_bytes {
+        if let Err(error) = verify_model_file(&part_path, target.size_bytes, &target.sha256) {
             let _ = self.active_downloads.lock().unwrap().remove(model_id);
             let _ = remove_file(&part_path);
             return Err(ProviderError::ModelError(format!(
-                "Model size mismatch for '{}': expected {} bytes, got {}",
-                target.id, target.size_bytes, actual_size
-            )));
-        }
-
-        let actual_sha256 = sha256_file(&part_path)
-            .map_err(|e| {
-                let _ = self.active_downloads.lock().unwrap().remove(model_id);
-                let _ = remove_file(&part_path);
-                ProviderError::ModelError(e)
-            })?;
-        if actual_sha256 != target.sha256 {
-            let _ = self.active_downloads.lock().unwrap().remove(model_id);
-            let _ = remove_file(&part_path);
-            return Err(ProviderError::ModelError(format!(
-                "Model checksum mismatch for '{}': expected {}, got {}",
-                target.id, target.sha256, actual_sha256
+                "Model integrity verification failed for '{}': {}",
+                target.id, error
             )));
         }
 
@@ -408,6 +390,28 @@ fn sha256_file(path: &Path) -> Result<String, String> {
     let mut hasher = Sha256::new();
     std::io::copy(&mut file, &mut hasher).map_err(|e| e.to_string())?;
     Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn verify_model_file(path: &Path, expected_size: u64, expected_sha256: &str) -> Result<(), String> {
+    let actual_size = std::fs::metadata(path)
+        .map_err(|e| e.to_string())?
+        .len();
+    if actual_size != expected_size {
+        return Err(format!(
+            "size mismatch: expected {} bytes, got {}",
+            expected_size, actual_size
+        ));
+    }
+
+    let actual_sha256 = sha256_file(path)?;
+    if actual_sha256 != expected_sha256 {
+        return Err(format!(
+            "checksum mismatch: expected {}, got {}",
+            expected_sha256, actual_sha256
+        ));
+    }
+
+    Ok(())
 }
 
 impl Default for ModelManager {
@@ -660,7 +664,7 @@ impl TranscriptionProvider for LocalWhisperProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::{sha256_file, LocalWhisperProvider};
+    use super::{sha256_file, verify_model_file, LocalWhisperProvider};
     use forge_transcription::{AudioData, TranscriptionOptions, TranscriptionProvider};
     use std::fs;
     use tempfile::tempdir;
@@ -698,5 +702,34 @@ mod tests {
             assert!(model.download_url.contains(&model.revision));
             assert!(model.size_bytes > 0);
         }
+    }
+
+    #[test]
+    fn model_integrity_accepts_matching_size_and_hash() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("model.bin");
+        fs::write(&path, b"forge-whisper-model").unwrap();
+
+        verify_model_file(
+            &path,
+            19,
+            "6dd540f2a57fb5991926c339ace7368d33cc400cf9090775e93defa243b5c373",
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn model_integrity_rejects_mismatch() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("model.bin");
+        fs::write(&path, b"corrupt-model").unwrap();
+
+        let error = verify_model_file(
+            &path,
+            19,
+            "6dd540f2a57fb5991926c339ace7368d33cc400cf9090775e93defa243b5c373",
+        )
+        .unwrap_err();
+        assert!(error.contains("size mismatch") || error.contains("checksum mismatch"));
     }
 }

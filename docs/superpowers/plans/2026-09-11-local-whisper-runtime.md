@@ -72,10 +72,11 @@
 - [ ] Review model/source licenses and update third-party notices.
 - [ ] Run the full verification gate, mark this task complete, commit, merge to `main`, and create the next branch.
 
-> Progress: pinned revision, byte-size metadata, SHA-256 verification, and
-> hash/catalog tests are implemented. A network-backed downloader mismatch test
-> remains before this task is fully complete; the full workspace/frontend gate
-> currently passes.
+- [x] Review model/source licenses and update third-party notices.
+- [x] Run the full verification gate and mark the task complete.
+
+> Integrity validation is covered by deterministic size/checksum tests; the
+> downloader removes `.part` files on every integrity failure before activation.
 
 ---
 

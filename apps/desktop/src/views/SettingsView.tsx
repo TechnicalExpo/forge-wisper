@@ -613,7 +613,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
                       ))
                     ) : (
                       <span className="text-[12px] text-[var(--text-muted)] font-mono animate-pulse">
-                        Listening... (e.g. Ctrl + Win, Alt + Space)
+                         Listening... (e.g. Ctrl + Win + Space, Alt + Space)
                       </span>
                     )}
                   </>
@@ -692,7 +692,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
               <span className="text-[11px] font-mono text-[var(--text-muted)] mr-1">Presets:</span>
               {[
                 { label: "Ctrl + Space", value: "Control+Space" },
-                { label: "Ctrl + Win", value: "Control+Super" },
+                 { label: "Ctrl + Win + Space", value: "Control+Super+Space" },
                 { label: "Alt + Space", value: "Alt+Space" },
                 { label: "Win + Space", value: "Super+Space" },
                 { label: "Ctrl + Shift + V", value: "Control+Shift+KeyV" },

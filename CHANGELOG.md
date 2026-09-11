@@ -9,6 +9,13 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.1.7] - 2026-09-11
+
+### Fixed
+
+- Rejected modifier-only global shortcuts such as `Control+Super` instead of silently saving a non-working hotkey.
+- Added a valid `Control+Super+Space` Windows shortcut preset.
+
 ## [0.1.6] - 2026-09-11
 
 ### Fixed

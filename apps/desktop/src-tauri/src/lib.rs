@@ -381,9 +381,11 @@ fn register_global_hotkey_inner<R: tauri::Runtime>(
         return Ok("No shortcut configured".to_string());
     }
 
-    if let Some(shortcut) = parse_shortcut_explicit(clean) {
-        let _ = global_shortcut.register(shortcut);
-    }
+    let shortcut = parse_shortcut_explicit(clean).ok_or_else(|| {
+        "Invalid hotkey: include a non-modifier key, for example Control+Super+Space."
+            .to_string()
+    })?;
+    let _ = global_shortcut.register(shortcut);
 
     // Candidate variants registration attempt
     let candidate_strings = vec![
@@ -584,6 +586,20 @@ mod hotkey_tests {
             parse_shortcut_explicit("Control+Alt+Space").expect("shortcut should parse");
 
         assert_eq!(shortcut.mods, Modifiers::CONTROL | Modifiers::ALT);
+        assert_eq!(shortcut.key, Code::Space);
+    }
+
+    #[test]
+    fn modifier_only_shortcut_is_rejected_by_parser() {
+        assert!(parse_shortcut_explicit("Control+Super").is_none());
+    }
+
+    #[test]
+    fn windows_modifier_shortcut_requires_primary_key() {
+        let shortcut =
+            parse_shortcut_explicit("Control+Super+Space").expect("shortcut should parse");
+
+        assert_eq!(shortcut.mods, Modifiers::CONTROL | Modifiers::SUPER);
         assert_eq!(shortcut.key, Code::Space);
     }
 }

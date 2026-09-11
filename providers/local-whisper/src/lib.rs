@@ -638,19 +638,31 @@ impl HardwareDetector {
 pub struct LocalWhisperProvider {
     model_manager: Arc<ModelManager>,
     active_model_id: Arc<Mutex<String>>,
+    context_cache: WhisperContextCache,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct WhisperContextKey {
+    model_path: PathBuf,
+    backend: String,
+    gpu_device_id: Option<i32>,
+}
+
+type WhisperContextCache = Arc<Mutex<Option<(WhisperContextKey, Arc<WhisperContext>)>>>;
 
 impl LocalWhisperProvider {
     pub fn new(model_manager: Arc<ModelManager>) -> Self {
         Self {
             model_manager,
             active_model_id: Arc::new(Mutex::new("base".to_string())),
+            context_cache: Arc::new(Mutex::new(None)),
         }
     }
 
     pub fn set_active_model(&self, model_id: &str) {
         let mut active = self.active_model_id.lock().unwrap();
         *active = model_id.to_string();
+        self.context_cache.lock().unwrap().take();
     }
 }
 
@@ -745,6 +757,16 @@ impl TranscriptionProvider for LocalWhisperProvider {
         let inference_language = language.clone();
         let duration_ms = audio.duration_ms;
         let transcription_started = Instant::now();
+        let gpu_device_id = if device_info.active_backend == "vulkan" {
+            gpu_device_info().map(|(device_id, _)| device_id)
+        } else {
+            None
+        };
+        let context_key = WhisperContextKey {
+            model_path: model_path.clone(),
+            backend: device_info.active_backend.clone(),
+            gpu_device_id,
+        };
 
         info!(
             target: "forge.local_whisper",
@@ -758,6 +780,7 @@ impl TranscriptionProvider for LocalWhisperProvider {
         );
 
         let inference_device_info = device_info.clone();
+        let context_cache = Arc::clone(&self.context_cache);
         let text = tokio::task::spawn_blocking(move || {
             let mut reader = hound::WavReader::new(Cursor::new(audio.wav_bytes))
                 .map_err(|e| ProviderError::InvalidAudio(e.to_string()))?;
@@ -772,23 +795,12 @@ impl TranscriptionProvider for LocalWhisperProvider {
                 .map(|sample| sample.map(|value| value as f32 / i16::MAX as f32))
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|e| ProviderError::InvalidAudio(e.to_string()))?;
-            let mut context_params = WhisperContextParameters::default();
-            context_params.use_gpu(inference_device_info.active_backend == "vulkan");
-            if let Some((device_id, _)) = gpu_device_info() {
-                context_params.gpu_device(device_id);
-            }
-            let context = WhisperContext::new_with_params(
-                model_path.to_string_lossy().as_ref(),
-                context_params,
-            )
-            .map_err(|e| ProviderError::ModelError(e.to_string()))?;
-            info!(
-                target: "forge.local_whisper",
-                phase = "model_loaded",
-                active_backend = %inference_device_info.active_backend,
-                gpu_acceleration = inference_device_info.active_backend == "vulkan",
-                "Local Whisper model loaded"
-            );
+            let context = cached_context(
+                &context_cache,
+                context_key,
+                &model_path,
+                &inference_device_info,
+            )?;
             let mut state = context
                 .create_state()
                 .map_err(|e| ProviderError::ModelError(e.to_string()))?;
@@ -840,15 +852,58 @@ impl TranscriptionProvider for LocalWhisperProvider {
     }
 }
 
+fn cached_context(
+    cache: &WhisperContextCache,
+    key: WhisperContextKey,
+    model_path: &Path,
+    device_info: &LocalComputeDeviceInfo,
+) -> Result<Arc<WhisperContext>, ProviderError> {
+    let mut cached = cache.lock().unwrap();
+    if let Some((cached_key, context)) = cached.as_ref() {
+        if cached_key == &key {
+            info!(
+                target: "forge.local_whisper",
+                phase = "model_cache_hit",
+                active_backend = %device_info.active_backend,
+                gpu_acceleration = device_info.active_backend == "vulkan",
+                "Reusing cached Local Whisper model context"
+            );
+            return Ok(Arc::clone(context));
+        }
+    }
+
+    let load_started = Instant::now();
+    let mut context_params = WhisperContextParameters::default();
+    context_params.use_gpu(device_info.active_backend == "vulkan");
+    if let Some(device_id) = key.gpu_device_id {
+        context_params.gpu_device(device_id);
+    }
+    let context = Arc::new(
+        WhisperContext::new_with_params(model_path.to_string_lossy().as_ref(), context_params)
+            .map_err(|e| ProviderError::ModelError(e.to_string()))?,
+    );
+    *cached = Some((key, Arc::clone(&context)));
+    info!(
+        target: "forge.local_whisper",
+        phase = "model_loaded",
+        active_backend = %device_info.active_backend,
+        gpu_acceleration = device_info.active_backend == "vulkan",
+        elapsed_ms = load_started.elapsed().as_millis() as u64,
+        "Loaded Local Whisper model context"
+    );
+    Ok(context)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         local_compute_device_info, sha256_file, verify_model_file, LocalWhisperProvider,
-        ModelManager,
+        ModelManager, WhisperContextKey,
     };
     use forge_transcription::{AudioData, TranscriptionOptions, TranscriptionProvider};
     use std::collections::HashMap;
     use std::fs;
+    use std::path::PathBuf;
     use std::sync::{Arc, Mutex};
     use tempfile::tempdir;
 
@@ -907,6 +962,50 @@ mod tests {
 
         assert_eq!(info.requested_device, "cpu");
         assert_eq!(info.active_backend, "cpu");
+    }
+
+    #[test]
+    fn context_keys_separate_cpu_and_vulkan_backends() {
+        let path = PathBuf::from("model.bin");
+        let cpu_key = WhisperContextKey {
+            model_path: path.clone(),
+            backend: "cpu".to_string(),
+            gpu_device_id: None,
+        };
+        let gpu_key = WhisperContextKey {
+            model_path: path,
+            backend: "vulkan".to_string(),
+            gpu_device_id: Some(1),
+        };
+
+        assert_ne!(cpu_key, gpu_key);
+    }
+
+    #[test]
+    fn context_keys_separate_vulkan_devices() {
+        let path = PathBuf::from("model.bin");
+        let first_gpu_key = WhisperContextKey {
+            model_path: path.clone(),
+            backend: "vulkan".to_string(),
+            gpu_device_id: Some(0),
+        };
+        let second_gpu_key = WhisperContextKey {
+            model_path: path,
+            backend: "vulkan".to_string(),
+            gpu_device_id: Some(1),
+        };
+
+        assert_ne!(first_gpu_key, second_gpu_key);
+    }
+
+    #[test]
+    fn changing_active_model_clears_context_cache() {
+        let provider = LocalWhisperProvider::default();
+        *provider.context_cache.lock().unwrap() = None;
+
+        provider.set_active_model("small");
+
+        assert!(provider.context_cache.lock().unwrap().is_none());
     }
 
     #[test]

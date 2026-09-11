@@ -289,23 +289,23 @@ Run a full recording pipeline and confirm the floating window is positioned once
 - Audio callback performs bounded, low-contention work.
 - Stop/encode transfers sample ownership instead of cloning when possible.
 
-- [ ] **Step 1: Replace RMS mutex with atomic storage**
+- [x] **Step 1: Replace RMS mutex with atomic storage**
 
 Store the RMS float through `AtomicU32` using `to_bits`/`from_bits`.
 
-- [ ] **Step 2: Preallocate or use a bounded/ring buffer**
+- [x] **Step 2: Preallocate or use a bounded/ring buffer**
 
-Avoid repeated vector growth during normal recording.
+Preallocate approximately ten seconds of interleaved sample capacity during recorder startup.
 
-- [ ] **Step 3: Transfer the buffer on stop**
+- [x] **Step 3: Transfer the buffer on stop**
 
-Use ownership transfer or `std::mem::take` under the smallest possible lock scope.
+Use `std::mem::take` under the smallest possible lock scope so encoding owns the samples without cloning the full recording.
 
-- [ ] **Step 4: Preserve NaN sanitization and resampling behavior**
+- [x] **Step 4: Preserve NaN sanitization and resampling behavior**
 
 Do not remove the current sanitization safeguards.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 ```powershell
 cargo test -p forge-audio

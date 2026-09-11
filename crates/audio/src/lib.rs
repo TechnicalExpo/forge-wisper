@@ -3,7 +3,7 @@ use cpal::{SampleFormat, StreamConfig};
 use hound::{WavSpec, WavWriter};
 use serde::{Deserialize, Serialize};
 use std::io::Cursor;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
 
@@ -58,7 +58,7 @@ pub fn list_input_devices() -> Result<Vec<AudioDeviceInfo>, AudioError> {
 pub struct AudioRecorder {
     is_recording: Arc<AtomicBool>,
     audio_buffer: Arc<Mutex<Vec<f32>>>,
-    rms_level: Arc<Mutex<f32>>,
+    rms_level: Arc<AtomicU32>,
     source_sample_rate: u32,
     source_channels: u16,
     _stream: cpal::Stream,
@@ -105,8 +105,9 @@ impl AudioRecorder {
 
         let stream_config: StreamConfig = default_config.into();
 
-        let audio_buffer = Arc::new(Mutex::new(Vec::<f32>::new()));
-        let rms_level = Arc::new(Mutex::new(0.0f32));
+        let initial_capacity = sample_rate as usize * channels as usize * 10;
+        let audio_buffer = Arc::new(Mutex::new(Vec::<f32>::with_capacity(initial_capacity)));
+        let rms_level = Arc::new(AtomicU32::new(0.0f32.to_bits()));
         let is_recording = Arc::new(AtomicBool::new(true));
 
         let buffer_clone = Arc::clone(&audio_buffer);
@@ -129,9 +130,7 @@ impl AudioRecorder {
                         if !data.is_empty() {
                             let sum_sq: f32 = data.iter().map(|s| s * s).sum();
                             let rms = (sum_sq / data.len() as f32).sqrt();
-                            if let Ok(mut r) = rms_clone.lock() {
-                                *r = rms;
-                            }
+                            rms_clone.store(rms.to_bits(), Ordering::Relaxed);
                         }
                     }
                 },
@@ -151,9 +150,7 @@ impl AudioRecorder {
                                 norm * norm
                             }).sum();
                             let rms = (sum_sq / data.len() as f32).sqrt();
-                            if let Ok(mut r) = rms_clone.lock() {
-                                *r = rms;
-                            }
+                            rms_clone.store(rms.to_bits(), Ordering::Relaxed);
                         }
                     }
                 },
@@ -195,12 +192,13 @@ impl AudioRecorder {
     }
 
     pub fn get_current_rms(&self) -> f32 {
-        *self.rms_level.lock().unwrap_or_else(|e| e.into_inner())
+        f32::from_bits(self.rms_level.load(Ordering::Relaxed))
     }
 
     pub fn stop_and_encode_wav(self) -> Result<Vec<u8>, AudioError> {
         self.is_recording.store(false, Ordering::SeqCst);
-        let mut raw_samples = self.audio_buffer.lock().unwrap().clone();
+        let mut raw_samples = std::mem::take(&mut *self.audio_buffer.lock().unwrap());
+        let raw_sample_count = raw_samples.len();
 
         // Handle empty or very short buffers gracefully
         if raw_samples.is_empty() {
@@ -221,7 +219,7 @@ impl AudioRecorder {
                 .map(|chunk| chunk.iter().sum::<f32>() / chunk.len() as f32)
                 .collect()
         } else {
-            raw_samples.clone()
+            raw_samples
         };
 
         // Peak Normalization / AGC: Scale quiet microphone audio to optimal Whisper amplitude (~0.80 peak)
@@ -251,7 +249,7 @@ impl AudioRecorder {
 
         println!(
             "[Forge Audio] Captured {} raw samples (Peak amplitude: {:.4}). Encoded {} samples at 16kHz.",
-            raw_samples.len(),
+            raw_sample_count,
             max_abs,
             resampled.len()
         );

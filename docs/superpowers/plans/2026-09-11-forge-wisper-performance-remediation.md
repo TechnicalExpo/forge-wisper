@@ -261,17 +261,17 @@ Use React DevTools or logging to confirm one state event produces one shared-sta
 **Interfaces:**
 - The recorder window is positioned only when it becomes visible.
 
-- [ ] **Step 1: Track previous visibility/state**
+- [x] **Step 1: Track previous visibility/state**
 
 Calculate whether the recorder was active before and after the transition.
 
-- [ ] **Step 2: Move monitor lookup and positioning behind inactive-to-active transition**
+- [x] **Step 2: Move monitor lookup and positioning behind inactive-to-active transition**
 
 Do not call `current_monitor` or `set_position` for every processing state.
 
-- [ ] **Step 3: Use CSS animation for processing bars**
+- [x] **Step 3: Use CSS animation for processing bars**
 
-Remove `Date.now()` from render and use a CSS keyframe animation for the non-listening processing state.
+Removed `Date.now()` from render and added a CSS keyframe animation for the processing state.
 
 - [ ] **Step 4: Verify**
 

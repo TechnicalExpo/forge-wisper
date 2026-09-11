@@ -9,6 +9,13 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.1.5] - 2026-09-11
+
+### Performance
+
+- Avoided repeated floating recorder monitor queries and repositioning during a single processing session.
+- Replaced render-time recorder animation clock reads with CSS animation.
+
 ## [0.1.4] - 2026-09-11
 
 ### Fixed

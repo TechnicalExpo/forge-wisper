@@ -6,7 +6,7 @@
 
 **Next-Generation Open-Source Voice-to-Structured-Text Desktop Application**
 
-**Current version:** `0.1.4`
+**Current version:** `0.1.5`
 
 *Speak naturally. Release. Receive clean, formatted, verified text directly at your cursor.*
 

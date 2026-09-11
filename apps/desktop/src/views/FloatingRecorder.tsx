@@ -98,8 +98,6 @@ export const FloatingRecorder: React.FC = () => {
             const maxHeight = 18;
             const dynamicHeight = state === "Listening"
               ? Math.max(minHeight, Math.min(maxHeight, Math.round(minHeight + (audioLevel * mult + 0.12) * (maxHeight - minHeight))))
-              : isProcessing
-              ? Math.round(minHeight + ((Math.sin((Date.now() / 140) + i) + 1) / 2) * (maxHeight - minHeight))
               : minHeight;
 
             return (
@@ -109,7 +107,7 @@ export const FloatingRecorder: React.FC = () => {
                   state === "Listening"
                     ? "bg-[var(--accent)] shadow-[0_0_4px_var(--accent)]"
                     : isProcessing
-                    ? "bg-[var(--accent)] opacity-80"
+                    ? "bg-[var(--accent)] opacity-80 recorder-processing-bar"
                     : "bg-[var(--text-muted)] opacity-40"
                 }`}
                 style={{

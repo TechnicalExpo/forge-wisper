@@ -4,6 +4,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes recorder-processing-pulse {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+
+.recorder-processing-bar {
+  transform-origin: center;
+  animation: recorder-processing-pulse 700ms ease-in-out infinite;
+}
+
 :root {
   /* Fonts */
   --font-sans: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

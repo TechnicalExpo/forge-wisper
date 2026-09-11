@@ -165,6 +165,29 @@ impl PipelineState {
 
     pub fn set_state(&self, app: &AppHandle, new_state: ProcessingState, err_msg: Option<String>) {
         let started = Instant::now();
+        let was_recorder_active = {
+            let state_guard = self.current_state.lock().unwrap();
+            matches!(
+                *state_guard,
+                ProcessingState::Listening
+                    | ProcessingState::Stopping
+                    | ProcessingState::Transcribing
+                    | ProcessingState::Cleaning
+                    | ProcessingState::Structuring
+                    | ProcessingState::Verifying
+                    | ProcessingState::Inserting
+            )
+        };
+        let is_recorder_active = matches!(
+            new_state,
+            ProcessingState::Listening
+                | ProcessingState::Stopping
+                | ProcessingState::Transcribing
+                | ProcessingState::Cleaning
+                | ProcessingState::Structuring
+                | ProcessingState::Verifying
+                | ProcessingState::Inserting
+        );
         {
             let mut state_guard = self.current_state.lock().unwrap();
             *state_guard = new_state;
@@ -184,17 +207,24 @@ impl PipelineState {
                 | ProcessingState::Structuring
                 | ProcessingState::Verifying
                 | ProcessingState::Inserting => {
-                    // Position at bottom center of current/primary monitor
-                    if let Ok(Some(monitor)) = recorder_win.current_monitor() {
-                        let screen_size = monitor.size();
-                        let scale = monitor.scale_factor();
-                        let win_w = (110.0 * scale) as i32;
-                        let win_h = (36.0 * scale) as i32;
-                        let x = monitor.position().x + (screen_size.width as i32 - win_w) / 2;
-                        let y = monitor.position().y + (screen_size.height as i32 - win_h) - (60.0 * scale) as i32;
-                        let _ = recorder_win.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
+                    if !was_recorder_active {
+                        // Position once when the recorder becomes active.
+                        if let Ok(Some(monitor)) = recorder_win.current_monitor() {
+                            let screen_size = monitor.size();
+                            let scale = monitor.scale_factor();
+                            let win_w = (110.0 * scale) as i32;
+                            let win_h = (36.0 * scale) as i32;
+                            let x = monitor.position().x
+                                + (screen_size.width as i32 - win_w) / 2;
+                            let y = monitor.position().y
+                                + (screen_size.height as i32 - win_h)
+                                - (60.0 * scale) as i32;
+                            let _ = recorder_win.set_position(tauri::Position::Physical(
+                                tauri::PhysicalPosition { x, y },
+                            ));
+                        }
+                        let _ = recorder_win.show();
                     }
-                    let _ = recorder_win.show();
                 }
                 ProcessingState::Success | ProcessingState::Error | ProcessingState::Cancelled => {
                     // Stay visible briefly then hide
@@ -222,6 +252,7 @@ impl PipelineState {
             operation = "processing.state_transition",
             state = ?new_state,
             elapsed_ms = started.elapsed().as_millis() as u64,
+            recorder_activated = !was_recorder_active && is_recorder_active,
         );
     }
 

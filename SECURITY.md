@@ -34,7 +34,7 @@ We actively provide security patches and updates for the following versions:
 - Keys are never serialized into plaintext configuration files, SQLite tables, or error logs.
 
 ### 3. Local-First Processing
-- **Offline Guarantee**: When using **Local Whisper**, 100% of speech recognition, text cleaning, formatting, and auto-pasting occurs locally on your CPU/GPU. No data leaves your machine.
+- **Offline Guarantee**: When the Local Whisper provider is fully available and selected, speech recognition, text cleaning, formatting, and auto-pasting are designed to occur locally on your CPU/GPU. No cloud request is intended in local mode. The provider implementation must be verified before making a release claim.
 - **Local SQLite History**: All dictation history is stored in a local SQLite database (`history.db`) on your device.
 
 ---
@@ -51,3 +51,13 @@ If you discover a security vulnerability or security bug within Forge Wisper, pl
    - Any suggested mitigations.
 
 We will acknowledge receipt of your vulnerability report within 48 hours and work with you on a coordinated disclosure and patch release.
+
+## 🔧 Security Requirements For Contributors
+
+- Never commit API keys, credentials, signing certificates, model access tokens, or private customer data.
+- Do not log Groq keys, raw audio, raw transcripts, clipboard contents, or keyring values.
+- Keep provider secrets in the native OS keyring; do not move them into JSON, SQLite, environment files committed to Git, or frontend state.
+- Treat subprocess execution, URL opening, auto-start registration, global hotkeys, clipboard access, model downloads, and installer scripts as security-sensitive changes.
+- Validate downloaded files and external inputs before execution or persistence.
+- Do not disable Smart App Control, Code Integrity, antivirus, or other OS protections in application code. Local development exceptions must be explicit, temporary, and documented outside production code.
+- Security-sensitive changes require an entry in the changelog and a review of the LPGS checklist in `AGENTS.md`.

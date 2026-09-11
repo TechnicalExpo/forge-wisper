@@ -6,7 +6,6 @@ import type {
   AudioDeviceInfo,
   FormattingMode,
   HistoryRecord,
-  ProcessingState,
 } from "../types";
 import {
   Mic,
@@ -30,7 +29,6 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { settings, processingState: sharedProcessingState } = useAppStore();
   const [history, setHistory] = useState<HistoryRecord[]>([]);
-  const [procState, setProcState] = useState<ProcessingState>("Idle");
   const [audioDevices, setAudioDevices] = useState<AudioDeviceInfo[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [dictationCopied, setDictationCopied] = useState(false);
@@ -87,14 +85,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   }, []);
 
   useEffect(() => {
-    setProcState(sharedProcessingState);
     if (["Success", "Idle", "Error"].includes(sharedProcessingState)) {
       void loadData();
     }
   }, [sharedProcessingState]);
 
   useEffect(() => {
-    void api.getDashboardMetrics(timeframe).then((result) => {
+    void loadMetrics(timeframe);
+  }, [timeframe]);
+
+  const loadMetrics = async (selectedTimeframe: "Today" | "Week" | "All") => {
+    try {
+      const result = await api.getDashboardMetrics(selectedTimeframe);
       const totalAudioMinutes = result.total_duration_ms / 1000 / 60;
       const rawWpm = totalAudioMinutes > 0
         ? Math.round(result.words_transcribed / totalAudioMinutes)
@@ -111,25 +113,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         sessionsCount: result.sessions_count,
         wpm: effectiveWpm,
       });
-    }).catch((error) => console.error("Error loading dashboard metrics:", error));
-  }, [timeframe]);
+    } catch (error) {
+      console.error("Error loading dashboard metrics:", error);
+    }
+  };
 
   const loadData = async () => {
     try {
-      const [allHistory, st, devices] = await Promise.all([
+      const [allHistory, devices] = await Promise.all([
         api.listHistoryPage(0, 5),
-        api.getProcessingState(),
         api.getAudioDevices().catch(() => [] as AudioDeviceInfo[]),
       ]);
 
       setHistory(allHistory.records);
-      setProcState(st);
       setAudioDevices(devices);
+      await loadMetrics(timeframe);
     } catch (e) {
       console.error("Error loading dashboard data:", e);
     }
   };
 
+  const procState = sharedProcessingState;
   const isRecording = procState === "Listening";
   const isProcessing = [
     "Stopping",
@@ -171,19 +175,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
     try {
       if (isRecording) {
-        setProcState("Stopping");
         await api.stopRecording();
       } else {
-        setProcState("Listening");
         await api.startRecording();
       }
     } catch (err) {
       console.error("Recording toggle error:", err);
       try {
-        const current = await api.getProcessingState();
-        setProcState(current);
+        await api.getProcessingState();
       } catch {
-        setProcState("Idle");
+        // The shared store remains authoritative for subsequent backend events.
       }
     }
   };
@@ -224,7 +225,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   const handleUpdateProvider = async (provider: string) => {
     if (!settings) return;
-    if (provider === "local-whisper") return;
     const defaultModel =
       provider === "local-whisper"
         ? (settings.model.startsWith("whisper-") ? "base" : settings.model)
@@ -613,7 +613,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 </button>
                 <button
                   type="button"
-                  disabled
                   onClick={() => handleUpdateProvider("local-whisper")}
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] font-medium transition-all cursor-pointer ${
                     settings?.provider === "local-whisper"

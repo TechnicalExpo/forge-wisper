@@ -181,6 +181,11 @@ Remove the startup call to `start_native_windows_hotkey_listener`. The native he
 
 The canonical event path is now the only path activated by application setup; parser coverage verifies the supported toggle and push-to-talk shortcuts.
 
+Windows-key combinations use the native Windows listener because the Tauri
+global shortcut path does not reliably deliver `Super` combinations. Two-key
+shortcuts such as `Control+Super` and `Super+Space` remain valid. Non-Windows
+shortcuts continue through the Tauri global shortcut path.
+
 - [x] **Step 4: Verify on Windows**
 
 The Windows build/test gate passes with the canonical Tauri shortcut path. Manual physical key testing remains a release validation item for default and custom shortcuts.

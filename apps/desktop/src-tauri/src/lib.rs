@@ -90,7 +90,12 @@ pub fn run() {
                 let s = state.settings.lock().unwrap();
                 s.hotkey.clone()
             };
-            let _ = register_global_hotkey(app.handle(), &initial_hotkey);
+            if !uses_super_modifier(&initial_hotkey) {
+                let _ = register_global_hotkey(app.handle(), &initial_hotkey);
+            }
+
+            #[cfg(target_os = "windows")]
+            start_native_windows_hotkey_listener(app.handle().clone());
             
             // Automatically register in Windows startup registry so the app always starts on PC boot
             let _ = set_autostart(true);
@@ -381,9 +386,11 @@ fn register_global_hotkey_inner<R: tauri::Runtime>(
         return Ok("No shortcut configured".to_string());
     }
 
-    if let Some(shortcut) = parse_shortcut_explicit(clean) {
-        let _ = global_shortcut.register(shortcut);
-    }
+    let shortcut = parse_shortcut_explicit(clean).ok_or_else(|| {
+        "Invalid hotkey: include a primary key, for example Control+Space."
+            .to_string()
+    })?;
+    let _ = global_shortcut.register(shortcut);
 
     // Candidate variants registration attempt
     let candidate_strings = vec![
@@ -500,8 +507,7 @@ pub fn parse_hotkey_to_vks(hotkey_str: &str) -> Vec<i32> {
 }
 
 #[cfg(target_os = "windows")]
-#[allow(dead_code)]
-fn start_native_windows_hotkey_listener(app: tauri::AppHandle) {
+pub(crate) fn start_native_windows_hotkey_listener(app: tauri::AppHandle) {
     std::thread::spawn(move || {
         let mut was_combo_pressed = false;
 
@@ -516,6 +522,11 @@ fn start_native_windows_hotkey_listener(app: tauri::AppHandle) {
                     continue;
                 }
             };
+
+            if !uses_super_modifier(&hotkey_str) {
+                was_combo_pressed = false;
+                continue;
+            }
 
             let required_vks = parse_hotkey_to_vks(&hotkey_str);
             if required_vks.is_empty() {
@@ -565,9 +576,18 @@ fn start_native_windows_hotkey_listener(app: tauri::AppHandle) {
     });
 }
 
+pub(crate) fn uses_super_modifier(hotkey_str: &str) -> bool {
+    hotkey_str.split('+').any(|part| {
+        matches!(
+            part.trim().to_ascii_lowercase().as_str(),
+            "super" | "win" | "windows" | "cmd" | "command" | "meta"
+        )
+    })
+}
+
 #[cfg(test)]
 mod hotkey_tests {
-    use super::parse_shortcut_explicit;
+    use super::{parse_shortcut_explicit, uses_super_modifier};
     use tauri_plugin_global_shortcut::{Code, Modifiers};
 
     #[test]
@@ -585,5 +605,28 @@ mod hotkey_tests {
 
         assert_eq!(shortcut.mods, Modifiers::CONTROL | Modifiers::ALT);
         assert_eq!(shortcut.key, Code::Space);
+    }
+
+    #[test]
+    fn windows_modifier_only_shortcut_is_routed_to_native_listener() {
+        assert!(parse_shortcut_explicit("Control+Super").is_none());
+        assert!(uses_super_modifier("Control+Super"));
+    }
+
+    #[test]
+    fn windows_modifier_shortcut_requires_primary_key() {
+        let shortcut =
+            parse_shortcut_explicit("Control+Super+Space").expect("shortcut should parse");
+
+        assert_eq!(shortcut.mods, Modifiers::CONTROL | Modifiers::SUPER);
+        assert_eq!(shortcut.key, Code::Space);
+    }
+
+    #[test]
+    fn windows_modifier_detection_supports_win_aliases() {
+        assert!(uses_super_modifier("Control+Super"));
+        assert!(uses_super_modifier("Win+Space"));
+        assert!(uses_super_modifier("Command+Space"));
+        assert!(!uses_super_modifier("Control+Space"));
     }
 }

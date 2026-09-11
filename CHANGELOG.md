@@ -9,6 +9,25 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.1.9] - 2026-09-11
+
+### Fixed
+
+- Kept `Control+Super` and `Super+Space` as supported two-key Windows shortcuts by routing Super combinations through the native Windows listener.
+
+## [0.1.8] - 2026-09-11
+
+### Fixed
+
+- Restored Windows-key hotkey support through the native Windows listener while keeping Tauri as the canonical path for other shortcuts.
+- Preserved two-key shortcuts `Control+Super` and `Super+Space` without requiring an extra primary key.
+
+## [0.1.7] - 2026-09-11
+
+### Fixed
+
+- Restored two-key Windows-key shortcuts such as `Control+Super` and `Super+Space` through the native Windows listener.
+
 ## [0.1.6] - 2026-09-11
 
 ### Fixed

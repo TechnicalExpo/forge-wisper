@@ -29,6 +29,7 @@ You can download, activate, and delete models directly from the Forge Wisper des
 If you are deploying Forge Wisper in an offline or airgapped environment, you can download model files manually from HuggingFace:
 - Source: [ggerganov/whisper.cpp on HuggingFace](https://huggingface.co/ggerganov/whisper.cpp/tree/main)
 - Place the downloaded `ggml-*.bin` file directly inside this directory or in your OS app data directory (`%APPDATA%\forge\ForgeWisper\data\models` on Windows).
+- In-app downloads are pinned to the Hugging Face model revision and verified against the catalog SHA-256 before activation. Manually installed files are discovered by filename but are not treated as catalog-verified downloads.
 
 ---
 

@@ -9,6 +9,13 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.2.1] - 2026-09-11
+
+### Security
+
+- Added pinned Whisper model revisions, expected byte sizes, and SHA-256 catalog metadata for model downloads.
+- Model files are verified before atomic activation; checksum/size mismatches remove the partial file.
+
 ## [0.2.0] - 2026-09-11
 
 ### Added

@@ -59,6 +59,14 @@ cargo test --workspace
 pnpm tauri:dev
 ```
 
+On Windows, use the native-runtime launcher when working on Local Whisper. It loads the MSVC developer environment and configures CMake, LLVM, `LIBCLANG_PATH`, and Cargo for the child Tauri process:
+
+```powershell
+pnpm tauri:dev:windows
+```
+
+If `pnpm tauri:dev` reports that `cmake` or `libclang.dll` cannot be found, the current terminal predates the CMake/LLVM installation. Open a new PowerShell, or use `pnpm tauri:dev:windows`.
+
 ---
 
 ## 🧪 Testing & Validation

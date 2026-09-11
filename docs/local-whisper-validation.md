@@ -17,6 +17,12 @@ $env:LIBCLANG_PATH = "C:\Program Files\LLVM\bin"
 $env:Path = "C:\Program Files\CMake\bin;C:\Program Files\LLVM\bin;$env:USERPROFILE\.cargo\bin;$env:Path"
 ```
 
+For development, the repository provides a repeatable launcher that performs this setup and loads the MSVC environment automatically:
+
+```powershell
+pnpm tauri:dev:windows
+```
+
 ## Model Path Override
 
 The provider accepts an external model path for validation without changing the persisted model catalog:

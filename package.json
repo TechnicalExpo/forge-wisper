@@ -8,6 +8,7 @@
     "build": "pnpm --filter @forge-wisper/desktop build",
     "tauri": "pnpm --filter @forge-wisper/desktop tauri",
     "tauri:dev": "pnpm --filter @forge-wisper/desktop tauri dev",
+    "tauri:dev:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-windows.ps1",
     "tauri:build": "pnpm --filter @forge-wisper/desktop tauri build",
     "build:macos": "cd apps/macOS && sh build.sh",
     "test": "cargo test --workspace"

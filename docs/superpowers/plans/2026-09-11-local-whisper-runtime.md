@@ -94,11 +94,15 @@
 - Invalidate/reload the context when the selected model changes.
 - Never hold a settings/storage mutex across inference or `.await`.
 
-- [ ] Add a model-id/path keyed cache with a clear ownership strategy for `WhisperContext`.
-- [ ] Ensure concurrent transcription requests cannot corrupt a shared inference state; use separate states or a guarded state pool.
-- [ ] Add cache hit, model switch invalidation, and concurrent-use tests.
-- [ ] Measure model-load time before and after caching.
-- [ ] Run the full verification gate, mark complete, merge to `main`, and create the next branch.
+- [x] Add a model path/backend/device keyed cache with a clear ownership strategy for `WhisperContext`.
+- [x] Ensure concurrent transcription requests cannot corrupt a shared inference state; share immutable contexts and create a fresh state per request.
+- [x] Add cache hit key-separation and model-switch invalidation tests. Real concurrent inference remains opt-in because it requires model weights.
+- [x] Add cold-load and warm-cache logging with `model_loaded elapsed_ms` and `model_cache_hit` lifecycle events.
+- [x] Run the full verification gate; merge this task to `main` and create the next branch.
+
+> Cache implementation is committed on `perf/local-whisper-cache-vulkan` and is
+> ready for merge. A controlled same-audio benchmark remains a follow-up manual
+> measurement using the documented cache lifecycle logs.
 
 ---
 

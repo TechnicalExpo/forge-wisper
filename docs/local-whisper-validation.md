@@ -103,6 +103,18 @@ Record:
 - Download lifecycle phases and whether verification completed successfully
 - Backend log values for `backend` and `gpu_acceleration`
 
+The cache lifecycle is visible in the Local Whisper logs:
+
+```text
+forge.local_whisper phase=model_loaded elapsed_ms=<first-load-time>
+forge.local_whisper phase=model_cache_hit
+```
+
+For a controlled cache measurement, use the same model, compute device, and
+10-30 second WAV input for three runs. Record the first run as cold-start time,
+then compare the second and third warm runs. CPU and Vulkan contexts are cached
+separately, and changing the selected model invalidates the cached context.
+
 ## Automated Fixture Work
 
 The repository intentionally does not include model weights or raw speech. Add a deterministic generated WAV fixture and an opt-in test harness only when the environment provides `FORGE_WHISPER_MODEL_PATH`; otherwise the test must skip with a clear message rather than fail CI.

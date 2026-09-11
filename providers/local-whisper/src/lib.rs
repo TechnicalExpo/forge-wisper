@@ -752,7 +752,6 @@ impl TranscriptionProvider for LocalWhisperProvider {
             model_id = %effective_model_id,
             model_path = %model_path.display(),
             audio_duration_ms = duration_ms,
-            backend = "cpu",
             active_backend = %device_info.active_backend,
             gpu_acceleration = device_info.active_backend == "vulkan",
             "Starting Local Whisper transcription"

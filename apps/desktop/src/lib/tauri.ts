@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
   AppSettings,
+  SettingsPatch,
   AudioDeviceInfo,
   HardwareRecommendation,
   HistoryRecord,
@@ -19,8 +20,8 @@ export const api = {
   cancelRecording: () => invoke<void>("cancel_recording"),
 
   getSettings: () => invoke<AppSettings>("get_settings"),
-  updateSettings: (settings: AppSettings) =>
-    invoke<void>("update_settings", { settings }),
+  updateSettings: (patch: SettingsPatch) =>
+    invoke<void>("update_settings", { patch }),
   getLocalComputeDeviceInfo: () => invoke<{
     requested_device: ComputeDevice;
     active_backend: string;

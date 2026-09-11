@@ -241,7 +241,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     if (!settings) return;
     const updated = { ...settings, formatting_mode: mode };
     try {
-      await api.updateSettings(updated);
+      await api.updateSettings({ formatting_mode: mode });
       setAppSettings(updated);
       setShowModeDropdown(false);
     } catch (err) {
@@ -259,7 +259,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
     const updated = { ...settings, provider, model: defaultModel };
     try {
-      await api.updateSettings(updated);
+      await api.updateSettings({ provider, model: defaultModel });
       setAppSettings(updated);
     } catch (err) {
       console.error("Failed to update provider:", err);
@@ -270,7 +270,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     if (!settings) return;
     const updated = { ...settings, microphone: micName };
     try {
-      await api.updateSettings(updated);
+      await api.updateSettings({ microphone: micName });
       setAppSettings(updated);
       setShowMicDropdown(false);
     } catch (err) {

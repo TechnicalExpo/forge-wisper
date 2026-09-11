@@ -50,6 +50,22 @@ pub struct AppSettings {
     pub launch_at_startup: bool,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SettingsPatch {
+    pub provider: Option<String>,
+    pub model: Option<String>,
+    pub compute_device: Option<String>,
+    pub microphone: Option<Option<String>>,
+    pub formatting_mode: Option<FormattingMode>,
+    pub hotkey: Option<String>,
+    pub is_toggle_mode: Option<bool>,
+    pub retention_policy: Option<RetentionPolicy>,
+    pub dictionary: Option<HashMap<String, String>>,
+    pub snippets: Option<HashMap<String, String>>,
+    pub theme: Option<String>,
+    pub launch_at_startup: Option<bool>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SettingsUpdatePlan {
     pub update_autostart: bool,
@@ -60,6 +76,25 @@ pub fn settings_update_plan(current: &AppSettings, next: &AppSettings) -> Settin
     SettingsUpdatePlan {
         update_autostart: current.launch_at_startup != next.launch_at_startup,
         update_hotkey: current.hotkey != next.hotkey,
+    }
+}
+
+impl AppSettings {
+    pub fn apply_patch(&self, patch: SettingsPatch) -> Self {
+        let mut next = self.clone();
+        if let Some(value) = patch.provider { next.provider = value; }
+        if let Some(value) = patch.model { next.model = value; }
+        if let Some(value) = patch.compute_device { next.compute_device = value; }
+        if let Some(value) = patch.microphone { next.microphone = value; }
+        if let Some(value) = patch.formatting_mode { next.formatting_mode = value; }
+        if let Some(value) = patch.hotkey { next.hotkey = value; }
+        if let Some(value) = patch.is_toggle_mode { next.is_toggle_mode = value; }
+        if let Some(value) = patch.retention_policy { next.retention_policy = value; }
+        if let Some(value) = patch.dictionary { next.dictionary = value; }
+        if let Some(value) = patch.snippets { next.snippets = value; }
+        if let Some(value) = patch.theme { next.theme = value; }
+        if let Some(value) = patch.launch_at_startup { next.launch_at_startup = value; }
+        next
     }
 }
 
@@ -526,7 +561,7 @@ impl Default for PipelineState {
 
 #[cfg(test)]
 mod settings_tests {
-    use super::{settings_update_plan, AppSettings};
+    use super::{settings_update_plan, AppSettings, SettingsPatch};
 
     #[test]
     fn unrelated_settings_do_not_schedule_os_side_effects() {
@@ -567,5 +602,41 @@ mod settings_tests {
                 update_hotkey: true,
             }
         );
+    }
+
+    #[test]
+    fn settings_patch_changes_only_requested_field() {
+        let current = AppSettings::default();
+        let next = current.apply_patch(SettingsPatch {
+            theme: Some("dark".to_string()),
+            ..Default::default()
+        });
+
+        assert_eq!(next.theme, "dark");
+        assert_eq!(next.provider, current.provider);
+        assert_eq!(next.hotkey, current.hotkey);
+        assert_eq!(next.launch_at_startup, current.launch_at_startup);
+    }
+
+    #[test]
+    fn settings_patch_detects_only_changed_os_fields() {
+        let current = AppSettings::default();
+        let theme_update = current.apply_patch(SettingsPatch {
+            theme: Some("dark".to_string()),
+            ..Default::default()
+        });
+        let hotkey_update = current.apply_patch(SettingsPatch {
+            hotkey: Some("Control+Shift+Space".to_string()),
+            ..Default::default()
+        });
+
+        assert_eq!(
+            settings_update_plan(&current, &theme_update),
+            super::SettingsUpdatePlan {
+                update_autostart: false,
+                update_hotkey: false,
+            }
+        );
+        assert!(settings_update_plan(&current, &hotkey_update).update_hotkey);
     }
 }

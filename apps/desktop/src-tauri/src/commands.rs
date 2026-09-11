@@ -1,4 +1,4 @@
-use crate::state::{settings_update_plan, AppSettings, PipelineState, ProcessingState};
+use crate::state::{settings_update_plan, AppSettings, PipelineState, ProcessingState, SettingsPatch};
 use forge_audio::{list_input_devices, AudioDeviceInfo};
 use forge_cleanup::{CleanupOptions, FormattingMode, RuleBasedCleaner};
 use forge_provider_local_whisper::{
@@ -58,23 +58,31 @@ pub fn get_settings(state: State<'_, PipelineState>) -> AppSettings {
 #[tauri::command]
 pub fn update_settings(
     app: AppHandle,
-    settings: AppSettings,
+    patch: SettingsPatch,
     state: State<'_, PipelineState>,
 ) -> Result<(), String> {
     let started = Instant::now();
     let current_settings = state.settings.lock().unwrap().clone();
+    let settings = current_settings.apply_patch(patch);
     let update_plan = settings_update_plan(&current_settings, &settings);
-
-    // Only touch OS integrations when their corresponding setting changed.
-    if update_plan.update_autostart {
-        crate::set_autostart(settings.launch_at_startup)?;
-    }
 
     if update_plan.update_hotkey {
         if crate::uses_super_modifier(&settings.hotkey) {
             let _ = app.global_shortcut().unregister_all();
         } else {
-            crate::register_global_hotkey(&app, &settings.hotkey)?;
+            if let Err(error) = crate::register_global_hotkey(&app, &settings.hotkey) {
+                let _ = crate::register_global_hotkey(&app, &current_settings.hotkey);
+                return Err(error);
+            }
+        }
+    }
+
+    if update_plan.update_autostart {
+        if let Err(error) = crate::set_autostart(settings.launch_at_startup) {
+            if update_plan.update_hotkey {
+                let _ = crate::register_global_hotkey(&app, &current_settings.hotkey);
+            }
+            return Err(error);
         }
     }
 
@@ -84,6 +92,7 @@ pub fn update_settings(
         let mut s = state.settings.lock().unwrap();
         *s = settings.clone();
     }
+    let _ = app.emit("forge://settings-changed", settings.clone());
 
     tracing::info!(
         target: "forge.performance",

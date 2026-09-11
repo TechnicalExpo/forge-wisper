@@ -7,6 +7,7 @@ import type {
   AudioDeviceInfo,
   FormattingMode,
   RetentionPolicy,
+  SettingsPatch,
 } from "../types";
 import { ForgeLogo } from "../components/ForgeLogo";
 import {
@@ -224,15 +225,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
     return themePreference || "light";
   };
 
-  const handleSave = async (updated: AppSettings) => {
+  const handleSave = async (updated: AppSettings | SettingsPatch) => {
     try {
-      await api.updateSettings(updated);
-      setAppSettings(updated);
-      if (updated.provider === "local-whisper") {
+      const merged = { ...settings, ...updated } as AppSettings;
+      const patch: SettingsPatch = {};
+      (Object.keys(merged) as Array<keyof AppSettings>).forEach((key) => {
+        if (!settings || merged[key] !== settings[key]) {
+          (patch as Record<string, unknown>)[key] = merged[key];
+        }
+      });
+      await api.updateSettings(patch);
+      setAppSettings(merged);
+      if (merged.provider === "local-whisper") {
         setComputeInfo(await api.getLocalComputeDeviceInfo());
       }
       setSaveSuccess(true);
-      document.documentElement.setAttribute("data-theme", resolveEffectiveTheme(updated.theme));
+      document.documentElement.setAttribute("data-theme", resolveEffectiveTheme(merged.theme));
       setTimeout(() => setSaveSuccess(false), 2000);
       return true;
     } catch (e: any) {

@@ -111,31 +111,31 @@ text, raw audio, or clipboard contents.
 - Hotkey registration runs only when the hotkey changes.
 - Autostart registry work runs only when the startup preference changes.
 
-- [ ] **Step 1: Add a Rust settings patch type**
+- [x] **Step 1: Add a Rust settings patch type**
 
 Create a serializable patch with optional fields for `provider`, `model`, `microphone`, `formatting_mode`, `hotkey`, `is_toggle_mode`, `retention_policy`, `dictionary`, `snippets`, `theme`, and `launch_at_startup`.
 
-- [ ] **Step 2: Read the current settings before applying the patch**
+- [x] **Step 2: Read the current settings before applying the patch**
 
 Clone the old settings, merge only supplied fields, and compare old/new values for `hotkey` and `launch_at_startup`.
 
-- [ ] **Step 3: Validate external changes before committing settings**
+- [x] **Step 3: Validate external changes before committing settings**
 
 If the hotkey changed, register the new shortcut before saving. If registration fails, return the error without persisting the new settings.
 
-- [ ] **Step 4: Call autostart only when the boolean changed**
+- [x] **Step 4: Call autostart only when the boolean changed**
 
 Do not invoke `reg` when unrelated settings change.
 
-- [ ] **Step 5: Persist and update memory after validation**
+- [x] **Step 5: Persist and update memory after validation**
 
 Save the merged settings, update `state.settings`, and emit a dedicated `forge://settings-changed` event.
 
-- [ ] **Step 6: Update frontend API callers**
+- [x] **Step 6: Update frontend API callers**
 
 Change theme, model, provider, microphone, dictionary, snippet, and formatting handlers to use the targeted patch command.
 
-- [ ] **Step 7: Add tests**
+- [x] **Step 7: Add tests**
 
 Cover:
 
@@ -146,7 +146,7 @@ failed hotkey registration does not persist new settings
 changed hotkey is registered once
 ```
 
-- [ ] **Step 8: Verify**
+- [x] **Step 8: Verify**
 
 ```powershell
 cargo test --workspace
@@ -157,6 +157,11 @@ pnpm --filter @forge-wisper/desktop build
 > Progress note: the initial settings side-effect optimization is implemented
 > and verified in `fix/settings-update-performance`. The complete patch-command
 > redesign in this task remains open until all listed steps are implemented.
+
+> Task 3 implementation is complete on `perf/settings-patch-updates`.
+> Settings changes now send targeted patches, validate hotkeys before saving,
+> roll back hotkey registration on external failure, emit
+> `forge://settings-changed`, and avoid unrelated autostart/hotkey work.
 
 ---
 

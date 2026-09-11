@@ -90,7 +90,10 @@ export const DictionaryView: React.FC = () => {
 
   const handleSave = async (updated: AppSettings) => {
     try {
-      await api.updateSettings(updated);
+      const patch = updated.dictionary !== settings?.dictionary
+        ? { dictionary: updated.dictionary }
+        : { snippets: updated.snippets };
+      await api.updateSettings(patch);
       setAppSettings(updated);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);

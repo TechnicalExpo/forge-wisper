@@ -129,8 +129,10 @@ impl RuleBasedCleaner {
         // 1. Voice snippet & macro expansion ("my signature" -> full text macro)
         text = Self::expand_snippets(&text, &options.snippets);
 
-        // 2. Spoken corrections ("Tuesday, actually Thursday" -> "Thursday")
-        text = Self::apply_corrections(&text);
+        // 2. Contextual self-corrections are part of Smart mode only.
+        if options.mode == FormattingMode::Smart {
+            text = Self::apply_corrections(&text);
+        }
 
         // 3. Spoken punctuation & verbal commands replacement ("new paragraph", "comma", "bullet point")
         text = Self::apply_spoken_punctuation(&text);
@@ -578,6 +580,51 @@ mod tests {
         assert!(cleaned.cleaned_text.contains("Hello,"));
         assert!(cleaned.cleaned_text.contains("1. Local Whisper"));
         assert!(cleaned.cleaned_text.contains("2. Groq."));
+    }
+
+    #[test]
+    fn formatting_modes_have_distinct_contracts() {
+        let transcript = Transcript {
+            text: "um first ship Tuesday, actually Thursday comma then deploy period".to_string(),
+            language: "en".to_string(),
+            provider: "groq".to_string(),
+            model: "whisper-large-v3-turbo".to_string(),
+            duration_ms: 3000,
+            confidence: Some(0.98),
+        };
+
+        let options = |mode| CleanupOptions {
+            mode,
+            dictionary: HashMap::new(),
+            snippets: HashMap::new(),
+        };
+
+        let raw = RuleBasedCleaner::clean(&transcript, &options(FormattingMode::Raw)).unwrap();
+        let clean = RuleBasedCleaner::clean(&transcript, &options(FormattingMode::Clean)).unwrap();
+        let structured =
+            RuleBasedCleaner::clean(&transcript, &options(FormattingMode::Structured)).unwrap();
+        let smart = RuleBasedCleaner::clean(&transcript, &options(FormattingMode::Smart)).unwrap();
+
+        assert_eq!(raw.cleaned_text, transcript.text.trim());
+        assert!(!clean.cleaned_text.contains("um"));
+        assert!(
+            clean.cleaned_text.contains("Tuesday, actually Thursday"),
+            "clean output: {:?}",
+            clean.cleaned_text
+        );
+        assert!(!clean.cleaned_text.contains("1. "));
+        assert!(
+            structured.cleaned_text.contains("1. Ship Tuesday"),
+            "structured output: {:?}",
+            structured.cleaned_text
+        );
+        assert!(
+            structured.cleaned_text.contains("2. Deploy."),
+            "structured output: {:?}",
+            structured.cleaned_text
+        );
+        assert!(smart.cleaned_text.contains("1. Ship Thursday"));
+        assert_ne!(smart.cleaned_text, structured.cleaned_text);
     }
 
     #[test]

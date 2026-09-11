@@ -9,6 +9,15 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.2] - 2026-09-12
+
+### Performance
+
+- Moved dashboard word, duration, and session metrics into SQLite aggregate
+  queries instead of loading and reducing the history list in the renderer.
+- Added database-backed history pagination with offset, limit, and total count.
+- Added 250 ms debounced history search with stale-request protection.
+
 ## [0.3.1] - 2026-09-12
 
 ### Performance

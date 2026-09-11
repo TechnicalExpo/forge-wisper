@@ -41,6 +41,17 @@ export const api = {
 
   listHistory: (limit = 50, search?: string) =>
     invoke<HistoryRecord[]>("list_history", { limit, search }),
+  listHistoryPage: (offset: number, limit: number, search?: string) =>
+    invoke<{
+      records: HistoryRecord[];
+      total_count: number;
+    }>("list_history_page", { offset, limit, search }),
+  getDashboardMetrics: (timeframe: "Today" | "Week" | "All") =>
+    invoke<{
+      words_transcribed: number;
+      total_duration_ms: number;
+      sessions_count: number;
+    }>("get_dashboard_metrics", { timeframe }),
   deleteHistoryItem: (id: string) =>
     invoke<boolean>("delete_history_item", { id }),
   clearHistory: () => invoke<void>("clear_history"),

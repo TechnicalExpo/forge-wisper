@@ -155,6 +155,8 @@ pub fn run() {
             delete_groq_api_key,
             test_groq_connection,
             list_history,
+            list_history_page,
+            get_dashboard_metrics,
             delete_history_item,
             clear_history,
             reprocess_history_item,

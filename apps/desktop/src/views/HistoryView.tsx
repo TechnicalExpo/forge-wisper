@@ -20,19 +20,45 @@ export const HistoryView: React.FC = () => {
   const [reprocessingId, setReprocessingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-
-  useEffect(() => {
-    loadHistory();
-  }, [searchQuery]);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, itemsPerPage]);
 
+  useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const data = await api.listHistoryPage(
+          (currentPage - 1) * itemsPerPage,
+          itemsPerPage,
+          searchQuery.trim() || undefined,
+        );
+        if (active) {
+          setRecords(data.records);
+          setTotalCount(data.total_count);
+        }
+      } catch (e) {
+        if (active) console.error(e);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [currentPage, itemsPerPage, searchQuery]);
+
   const loadHistory = async () => {
     try {
-      const data = await api.listHistory(100, searchQuery.trim() || undefined);
-      setRecords(data);
+      const data = await api.listHistoryPage(
+        (currentPage - 1) * itemsPerPage,
+        itemsPerPage,
+        searchQuery.trim() || undefined,
+      );
+      setRecords(data.records);
+      setTotalCount(data.total_count);
     } catch (e) {
       console.error(e);
     }
@@ -77,10 +103,9 @@ export const HistoryView: React.FC = () => {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(records.length / itemsPerPage));
+  const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage));
   const validCurrentPage = Math.min(currentPage, totalPages);
-  const startIndex = (validCurrentPage - 1) * itemsPerPage;
-  const currentRecords = records.slice(startIndex, startIndex + itemsPerPage);
+  const currentRecords = records;
 
   return (
     <div className="space-y-5 animate-fadeIn font-sans w-full pb-12">
@@ -236,7 +261,7 @@ export const HistoryView: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-3 border-t border-[var(--border-subtle)] text-[12px] text-[var(--text-secondary)] font-mono">
               <div className="flex items-center gap-3">
                 <span>
-                  Showing <strong className="text-[var(--text-primary)]">{records.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + itemsPerPage, records.length)}</strong> of <strong className="text-[var(--text-primary)]">{records.length}</strong>
+                   Showing <strong className="text-[var(--text-primary)]">{totalCount === 0 ? 0 : (validCurrentPage - 1) * itemsPerPage + 1}–{Math.min(validCurrentPage * itemsPerPage, totalCount)}</strong> of <strong className="text-[var(--text-primary)]">{totalCount}</strong>
                 </span>
                 <div className="flex items-center gap-1.5 ml-2">
                   <span className="text-[var(--text-muted)] text-[11px]">Per page:</span>

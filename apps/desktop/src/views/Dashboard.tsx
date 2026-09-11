@@ -35,7 +35,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [dictationCopied, setDictationCopied] = useState(false);
 
-  const [allHistoryRecords, setAllHistoryRecords] = useState<HistoryRecord[]>([]);
   const [timeframe, setTimeframe] = useState<"Today" | "Week" | "All">("Today");
   const [showTimeframeDropdown, setShowTimeframeDropdown] = useState(false);
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
@@ -94,62 +93,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     }
   }, [sharedProcessingState]);
 
-  // Recalculate metrics whenever allHistoryRecords or timeframe changes
   useEffect(() => {
-    if (allHistoryRecords.length === 0) {
+    void api.getDashboardMetrics(timeframe).then((result) => {
+      const totalAudioMinutes = result.total_duration_ms / 1000 / 60;
+      const rawWpm = totalAudioMinutes > 0
+        ? Math.round(result.words_transcribed / totalAudioMinutes)
+        : (result.words_transcribed > 0 ? 148 : 0);
+      const effectiveWpm = rawWpm > 0 && rawWpm < 300 ? rawWpm : (result.words_transcribed > 0 ? 148 : 0);
+      const savedMinutes = Math.round(result.words_transcribed * 0.0183);
+      const savedStr = savedMinutes >= 60
+        ? `${(savedMinutes / 60).toFixed(1)}h`
+        : `${savedMinutes}m`;
+
       setMetrics({
-        wordsTranscribed: 0,
-        timeSavedStr: "0m",
-        sessionsCount: 0,
-        wpm: 0,
+        wordsTranscribed: result.words_transcribed,
+        timeSavedStr: savedStr,
+        sessionsCount: result.sessions_count,
+        wpm: effectiveWpm,
       });
-      return;
-    }
-
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const sevenDaysAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
-
-    const filtered = allHistoryRecords.filter((r) => {
-      const t = new Date(r.created_at).getTime();
-      if (timeframe === "Today") return t >= startOfToday;
-      if (timeframe === "Week") return t >= sevenDaysAgo;
-      return true;
-    });
-
-    const totalDuration = filtered.reduce((acc, r) => acc + (r.duration_ms || 0), 0);
-    const totalWords = filtered.reduce((acc, r) => {
-      const words = (r.final_text || "").trim().split(/\s+/).filter(Boolean).length;
-      return acc + words;
-    }, 0);
-
-    const totalAudioMinutes = totalDuration / 1000 / 60;
-    const rawWpm = totalAudioMinutes > 0 ? Math.round(totalWords / totalAudioMinutes) : (totalWords > 0 ? 148 : 0);
-    const effectiveWpm = rawWpm > 0 && rawWpm < 300 ? rawWpm : (totalWords > 0 ? 148 : 0);
-
-    const savedMinutes = Math.round(totalWords * 0.0183);
-    const savedStr = savedMinutes >= 60
-      ? `${(savedMinutes / 60).toFixed(1)}h`
-      : `${savedMinutes}m`;
-
-    setMetrics({
-      wordsTranscribed: totalWords,
-      timeSavedStr: savedStr,
-      sessionsCount: filtered.length,
-      wpm: effectiveWpm,
-    });
-  }, [allHistoryRecords, timeframe]);
+    }).catch((error) => console.error("Error loading dashboard metrics:", error));
+  }, [timeframe]);
 
   const loadData = async () => {
     try {
       const [allHistory, st, devices] = await Promise.all([
-        api.listHistory(100),
+        api.listHistoryPage(0, 5),
         api.getProcessingState(),
         api.getAudioDevices().catch(() => [] as AudioDeviceInfo[]),
       ]);
 
-      setAllHistoryRecords(allHistory);
-      setHistory(allHistory.slice(0, 5));
+      setHistory(allHistory.records);
       setProcState(st);
       setAudioDevices(devices);
     } catch (e) {

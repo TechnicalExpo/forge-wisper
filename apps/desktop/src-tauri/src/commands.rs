@@ -6,7 +6,7 @@ use forge_provider_local_whisper::{
     LocalModelInfo,
 };
 use forge_security::SecretStore;
-use forge_storage::HistoryRecord;
+use forge_storage::{DashboardMetrics, HistoryRecord, PaginatedHistory};
 use forge_transcription::Transcript;
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
@@ -172,6 +172,30 @@ pub fn list_history(
         success = result.is_ok(),
     );
     result
+}
+
+#[tauri::command]
+pub fn list_history_page(
+    offset: usize,
+    limit: usize,
+    search: Option<String>,
+    state: State<'_, PipelineState>,
+) -> Result<PaginatedHistory, String> {
+    state
+        .storage
+        .list_records_page(offset, limit, search.as_deref())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_dashboard_metrics(
+    timeframe: String,
+    state: State<'_, PipelineState>,
+) -> Result<DashboardMetrics, String> {
+    state
+        .storage
+        .dashboard_metrics(&timeframe)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

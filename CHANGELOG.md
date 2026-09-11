@@ -9,6 +9,29 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.1] - 2026-09-12
+
+### Performance
+
+- Added Local Whisper context caching for repeated transcriptions.
+- Kept CPU and Vulkan contexts isolated by model path, backend, and GPU device.
+- Reduced settings IPC payloads by sending targeted settings patches instead of
+  the complete settings object for every change.
+- Avoided unrelated hotkey registration and Windows autostart work when other
+  settings change.
+
+### Reliability
+
+- Added cache invalidation when the selected Local Whisper model changes.
+- Added rollback behavior when hotkey or autostart validation fails before
+  settings are persisted.
+- Added a `forge://settings-changed` event for synchronized settings consumers.
+
+### Documentation
+
+- Added repeatable real-model Local Whisper E2E evidence collection for CPU,
+  Vulkan GPU, cache warm-up, pipeline verification, and optional Groq comparison.
+
 ## [0.3.0] - 2026-09-11
 
 ### Added

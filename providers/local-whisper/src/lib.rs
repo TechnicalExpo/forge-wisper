@@ -13,6 +13,7 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
+use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelDownloadProgress {
@@ -30,6 +31,9 @@ pub struct LocalModelInfo {
     pub size_mb: u64,
     pub ram_estimate_mb: u64,
     pub download_url: String,
+    pub revision: String,
+    pub sha256: String,
+    pub size_bytes: u64,
     pub is_installed: bool,
     pub is_default: bool,
 }
@@ -129,6 +133,7 @@ impl ModelManager {
     }
 
     pub fn list_available_models(&self) -> Vec<LocalModelInfo> {
+        const REVISION: &str = "5359861c739e955e79d9a303bcbc70fb988958b1";
         let catalog = vec![
             (
                 "tiny",
@@ -137,6 +142,7 @@ impl ModelManager {
                 75,
                 390,
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin",
+                "be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21",
                 false,
             ),
             (
@@ -146,6 +152,7 @@ impl ModelManager {
                 142,
                 500,
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
+                "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
                 true,
             ),
             (
@@ -155,6 +162,7 @@ impl ModelManager {
                 466,
                 1024,
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
+                "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
                 false,
             ),
             (
@@ -164,6 +172,7 @@ impl ModelManager {
                 1536,
                 2600,
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin",
+                "6c14d5adee5f86394037b4e4e8b59f1673b6cee10e3cf0b11bbdbee79c156208",
                 false,
             ),
             (
@@ -173,6 +182,7 @@ impl ModelManager {
                 1638,
                 2800,
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin",
+                "1fc70f774d38eb169993ac391eea357ef47c88757ef72ee5943879b7e8e2bc69",
                 false,
             ),
             (
@@ -182,13 +192,14 @@ impl ModelManager {
                 3100,
                 4700,
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin",
+                "64d182b440b98d5203c4f9bd541544d84c605196c4f7b845dfa11fb23594d1e2",
                 false,
             ),
         ];
 
         catalog
             .into_iter()
-            .map(|(id, name, filename, size_mb, ram_mb, url, is_def)| {
+            .map(|(id, name, filename, size_mb, ram_mb, _url, sha256, is_def)| {
                 let is_installed = self.find_model_file(filename).is_some();
                 LocalModelInfo {
                     id: id.to_string(),
@@ -196,7 +207,21 @@ impl ModelManager {
                     filename: filename.to_string(),
                     size_mb,
                     ram_estimate_mb: ram_mb,
-                    download_url: url.to_string(),
+                    download_url: format!(
+                        "https://huggingface.co/ggerganov/whisper.cpp/resolve/{}/{}",
+                        REVISION, filename
+                    ),
+                    revision: REVISION.to_string(),
+                    sha256: sha256.to_string(),
+                    size_bytes: match id {
+                        "tiny" => 77_691_713,
+                        "base" => 147_951_465,
+                        "small" => 487_601_967,
+                        "medium" => 1_533_763_059,
+                        "large-v3-turbo" => 1_624_555_275,
+                        "large-v3" => 3_095_033_483,
+                        _ => 0,
+                    },
                     is_installed,
                     is_default: is_def,
                 }
@@ -319,6 +344,33 @@ impl ModelManager {
             return Err(ProviderError::ModelError(e.to_string()));
         }
 
+        let actual_size = std::fs::metadata(&part_path)
+            .map_err(|e| ProviderError::ModelError(e.to_string()))?
+            .len();
+        if actual_size != target.size_bytes {
+            let _ = self.active_downloads.lock().unwrap().remove(model_id);
+            let _ = remove_file(&part_path);
+            return Err(ProviderError::ModelError(format!(
+                "Model size mismatch for '{}': expected {} bytes, got {}",
+                target.id, target.size_bytes, actual_size
+            )));
+        }
+
+        let actual_sha256 = sha256_file(&part_path)
+            .map_err(|e| {
+                let _ = self.active_downloads.lock().unwrap().remove(model_id);
+                let _ = remove_file(&part_path);
+                ProviderError::ModelError(e)
+            })?;
+        if actual_sha256 != target.sha256 {
+            let _ = self.active_downloads.lock().unwrap().remove(model_id);
+            let _ = remove_file(&part_path);
+            return Err(ProviderError::ModelError(format!(
+                "Model checksum mismatch for '{}': expected {}, got {}",
+                target.id, target.sha256, actual_sha256
+            )));
+        }
+
         // Atomically rename .part -> final .bin
         if let Err(e) = std::fs::rename(&part_path, &dest_path) {
             let _ = self.active_downloads.lock().unwrap().remove(model_id);
@@ -349,6 +401,13 @@ impl ModelManager {
             Ok(false)
         }
     }
+}
+
+fn sha256_file(path: &Path) -> Result<String, String> {
+    let mut file = File::open(path).map_err(|e| e.to_string())?;
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher).map_err(|e| e.to_string())?;
+    Ok(format!("{:x}", hasher.finalize()))
 }
 
 impl Default for ModelManager {
@@ -601,8 +660,10 @@ impl TranscriptionProvider for LocalWhisperProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::LocalWhisperProvider;
+    use super::{sha256_file, LocalWhisperProvider};
     use forge_transcription::{AudioData, TranscriptionOptions, TranscriptionProvider};
+    use std::fs;
+    use tempfile::tempdir;
 
     #[tokio::test]
     async fn missing_model_returns_a_clear_error() {
@@ -615,5 +676,27 @@ mod tests {
             .await;
 
         assert!(matches!(result, Err(forge_transcription::ProviderError::ModelError(_))));
+    }
+
+    #[test]
+    fn sha256_file_returns_known_digest() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("model.bin");
+        fs::write(&path, b"forge-whisper-model").unwrap();
+
+        assert_eq!(
+            sha256_file(&path).unwrap(),
+            "6dd540f2a57fb5991926c339ace7368d33cc400cf9090775e93defa243b5c373"
+        );
+    }
+
+    #[test]
+    fn catalog_metadata_is_pinned_and_hashed() {
+        for model in LocalWhisperProvider::default().model_manager.list_available_models() {
+            assert_eq!(model.revision.len(), 40);
+            assert_eq!(model.sha256.len(), 64);
+            assert!(model.download_url.contains(&model.revision));
+            assert!(model.size_bytes > 0);
+        }
     }
 }

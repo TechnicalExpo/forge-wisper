@@ -4,7 +4,7 @@ This file is the repository-level source of truth for coding, branching, release
 
 ## Project Baseline
 
-- Current release version: `0.2.0`.
+- Current release version: `0.2.1`.
 - Application stack: Tauri 2, Rust 2021, React, TypeScript, Vite, Tailwind CSS, pnpm, and a Cargo workspace.
 - Rust is used for audio capture, transcription providers, cleanup, verification, storage, OS integration, hotkeys, and output injection.
 - TypeScript is used for UI, view state, frontend API wrappers, and presentation logic.

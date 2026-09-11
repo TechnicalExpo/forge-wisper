@@ -65,12 +65,17 @@
 - Verify downloaded byte length and SHA-256 before atomic rename.
 - Reject a corrupted/partial model as unavailable.
 
-- [ ] Add per-model expected SHA-256 and pinned source revision metadata.
-- [ ] Hash the `.part` file before renaming it to the final model path.
-- [ ] Keep existing `.part` cleanup and atomic rename behavior.
-- [ ] Add tests for matching hash, mismatched hash, and interrupted download cleanup.
+- [x] Add per-model expected SHA-256 and pinned source revision metadata.
+- [x] Hash the `.part` file before renaming it to the final model path.
+- [x] Keep existing `.part` cleanup and atomic rename behavior.
+- [x] Add unit coverage for hash computation, catalog metadata, and missing-model behavior. Network-backed mismatch/interrupt tests remain pending.
 - [ ] Review model/source licenses and update third-party notices.
 - [ ] Run the full verification gate, mark this task complete, commit, merge to `main`, and create the next branch.
+
+> Progress: pinned revision, byte-size metadata, SHA-256 verification, and
+> hash/catalog tests are implemented. A network-backed downloader mismatch test
+> remains before this task is fully complete; the full workspace/frontend gate
+> currently passes.
 
 ---
 

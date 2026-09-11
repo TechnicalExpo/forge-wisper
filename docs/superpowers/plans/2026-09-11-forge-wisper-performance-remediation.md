@@ -28,7 +28,7 @@
 **Interfaces:**
 - Produces a working `cargo` and `rustup` environment for all later tasks.
 
-- [ ] **Step 1: Verify installed tools**
+- [x] **Step 1: Verify installed tools**
 
 ```powershell
 rustup --version
@@ -44,7 +44,7 @@ rustc 1.98.1
 cargo 1.98.1
 ```
 
-- [ ] **Step 2: Verify the workspace baseline**
+- [x] **Step 2: Verify the workspace baseline**
 
 ```powershell
 cargo test --workspace
@@ -54,7 +54,7 @@ pnpm --filter @forge-wisper/desktop build
 
 On the initial machine baseline, the frontend build passed. Rust compilation requires Microsoft Visual C++ Build Tools and a shell where Microsoft's `link.exe` precedes Git/Hermes' `link.exe`.
 
-- [ ] **Step 3: Record failures before source changes**
+- [x] **Step 3: Record failures before source changes**
 
 Save command output in the task notes or issue tracker. Do not modify source as part of this task.
 
@@ -148,6 +148,10 @@ cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 pnpm --filter @forge-wisper/desktop build
 ```
+
+> Progress note: the initial settings side-effect optimization is implemented
+> and verified in `fix/settings-update-performance`. The complete patch-command
+> redesign in this task remains open until all listed steps are implemented.
 
 ---
 

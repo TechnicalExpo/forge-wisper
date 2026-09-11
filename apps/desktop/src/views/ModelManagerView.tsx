@@ -93,7 +93,7 @@ export const ModelManagerView: React.FC = () => {
           const firstInstalled = m.find((item) => item.is_installed);
           if (firstInstalled) {
             const updated = { ...s, model: firstInstalled.id };
-            await api.updateSettings(updated);
+            await api.updateSettings({ model: firstInstalled.id });
             setAppSettings(updated);
           }
         }
@@ -126,7 +126,7 @@ export const ModelManagerView: React.FC = () => {
           provider: "local-whisper",
           model: id,
         };
-        await api.updateSettings(updated);
+        await api.updateSettings({ provider: "local-whisper", model: id });
         setAppSettings(updated);
       }
     } catch (e) {
@@ -160,7 +160,7 @@ export const ModelManagerView: React.FC = () => {
         provider: "local-whisper",
         model: modelId,
       };
-      await api.updateSettings(updated);
+      await api.updateSettings({ provider: "local-whisper", model: modelId });
       setAppSettings(updated);
     } catch (e) {
       console.error(e);

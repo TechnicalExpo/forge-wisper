@@ -83,7 +83,7 @@ export const App: React.FC = () => {
     const newTheme = currentEffective === "light" ? "dark" : "light";
     const updated = { ...settings, theme: newTheme as "dark" | "light" | "system" };
     try {
-      await api.updateSettings(updated);
+      await api.updateSettings({ theme: newTheme as "dark" | "light" | "system" });
       setAppSettings(updated);
       applyTheme(newTheme);
     } catch (e) {

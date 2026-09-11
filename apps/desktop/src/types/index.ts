@@ -31,6 +31,10 @@ export interface AppSettings {
   launch_at_startup?: boolean;
 }
 
+export type SettingsPatch = Partial<Omit<AppSettings, "microphone">> & {
+  microphone?: string | null;
+};
+
 export interface AudioDeviceInfo {
   name: string;
   is_default: boolean;

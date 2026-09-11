@@ -1,7 +1,10 @@
 use crate::state::{settings_update_plan, AppSettings, PipelineState, ProcessingState};
 use forge_audio::{list_input_devices, AudioDeviceInfo};
 use forge_cleanup::{CleanupOptions, FormattingMode, RuleBasedCleaner};
-use forge_provider_local_whisper::{HardwareDetector, HardwareRecommendation, LocalModelInfo};
+use forge_provider_local_whisper::{
+    local_compute_device_info, HardwareDetector, HardwareRecommendation, LocalComputeDeviceInfo,
+    LocalModelInfo,
+};
 use forge_security::SecretStore;
 use forge_storage::HistoryRecord;
 use forge_transcription::Transcript;
@@ -290,6 +293,28 @@ pub fn delete_model(
 #[tauri::command]
 pub fn get_hardware_recommendation() -> HardwareRecommendation {
     HardwareDetector::detect_and_recommend()
+}
+
+#[tauri::command]
+pub fn get_local_compute_device_info(
+    state: State<'_, PipelineState>,
+) -> LocalComputeDeviceInfo {
+    let requested_device = state
+        .settings
+        .lock()
+        .unwrap()
+        .compute_device
+        .clone();
+    let info = local_compute_device_info(&requested_device);
+    tracing::info!(
+        target: "forge.local_whisper",
+        requested_device = %info.requested_device,
+        active_backend = %info.active_backend,
+        gpu_available = info.gpu_available,
+        gpu_name = ?info.gpu_name,
+        "Reported Local Whisper compute device"
+    );
+    info
 }
 
 #[tauri::command]

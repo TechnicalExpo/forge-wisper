@@ -48,6 +48,55 @@ pub struct HardwareRecommendation {
     pub reason: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocalComputeDeviceInfo {
+    pub requested_device: String,
+    pub active_backend: String,
+    pub gpu_available: bool,
+    pub gpu_name: Option<String>,
+    pub reason: String,
+}
+
+fn gpu_device_info() -> Option<(i32, String)> {
+    #[cfg(windows)]
+    {
+        let devices = whisper_rs::vulkan::list_devices();
+        devices
+            .iter()
+            .find(|device| {
+                let name = device.name.to_ascii_lowercase();
+                name.contains("nvidia") || name.contains("amd") || name.contains("radeon")
+            })
+            .or_else(|| devices.first())
+            .map(|device| (device.id, device.name.clone()))
+    }
+
+    #[cfg(not(windows))]
+    {
+        None
+    }
+}
+
+pub fn local_compute_device_info(requested_device: &str) -> LocalComputeDeviceInfo {
+    let requested_device = if requested_device == "gpu" { "gpu" } else { "cpu" };
+    let gpu = gpu_device_info();
+    let gpu_available = gpu.is_some();
+    let (active_backend, reason) = match (requested_device, gpu_available) {
+        ("gpu", true) => ("vulkan", "Vulkan GPU backend is available"),
+        ("gpu", false) => ("unavailable", "Vulkan GPU backend is not available"),
+        ("cpu", _) => ("cpu", "CPU mode was selected"),
+        _ => ("cpu", "CPU mode was selected"),
+    };
+
+    LocalComputeDeviceInfo {
+        requested_device: requested_device.to_string(),
+        active_backend: active_backend.to_string(),
+        gpu_available,
+        gpu_name: gpu.map(|(_, name)| name),
+        reason: reason.to_string(),
+    }
+}
+
 #[derive(Clone)]
 pub struct ModelManager {
     models_dir: PathBuf,
@@ -657,6 +706,16 @@ impl TranscriptionProvider for LocalWhisperProvider {
         }
 
         let requested_id = options.model.clone().unwrap_or_else(|| "base".to_string());
+        let requested_device = options
+            .compute_device
+            .as_deref()
+            .unwrap_or("cpu");
+        let device_info = local_compute_device_info(requested_device);
+        if requested_device == "gpu" && !device_info.gpu_available {
+            return Err(ProviderError::ModelError(
+                "GPU mode was selected, but the Vulkan Whisper backend is unavailable. Install a Vulkan-capable build and GPU driver, or select CPU mode.".to_string(),
+            ));
+        }
         let external_model_path = std::env::var_os("FORGE_WHISPER_MODEL_PATH")
             .map(PathBuf::from)
             .filter(|path| path.is_file());
@@ -694,10 +753,12 @@ impl TranscriptionProvider for LocalWhisperProvider {
             model_path = %model_path.display(),
             audio_duration_ms = duration_ms,
             backend = "cpu",
-            gpu_acceleration = false,
+            active_backend = %device_info.active_backend,
+            gpu_acceleration = device_info.active_backend == "vulkan",
             "Starting Local Whisper transcription"
         );
 
+        let inference_device_info = device_info.clone();
         let text = tokio::task::spawn_blocking(move || {
             let mut reader = hound::WavReader::new(Cursor::new(audio.wav_bytes))
                 .map_err(|e| ProviderError::InvalidAudio(e.to_string()))?;
@@ -712,16 +773,21 @@ impl TranscriptionProvider for LocalWhisperProvider {
                 .map(|sample| sample.map(|value| value as f32 / i16::MAX as f32))
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|e| ProviderError::InvalidAudio(e.to_string()))?;
+            let mut context_params = WhisperContextParameters::default();
+            context_params.use_gpu(inference_device_info.active_backend == "vulkan");
+            if let Some((device_id, _)) = gpu_device_info() {
+                context_params.gpu_device(device_id);
+            }
             let context = WhisperContext::new_with_params(
                 model_path.to_string_lossy().as_ref(),
-                WhisperContextParameters::default(),
+                context_params,
             )
             .map_err(|e| ProviderError::ModelError(e.to_string()))?;
             info!(
                 target: "forge.local_whisper",
                 phase = "model_loaded",
-                backend = "cpu",
-                gpu_acceleration = false,
+                active_backend = %inference_device_info.active_backend,
+                gpu_acceleration = inference_device_info.active_backend == "vulkan",
                 "Local Whisper model loaded"
             );
             let mut state = context
@@ -759,8 +825,8 @@ impl TranscriptionProvider for LocalWhisperProvider {
             model_id = %effective_model_id,
             audio_duration_ms = duration_ms,
             elapsed_ms = transcription_started.elapsed().as_millis() as u64,
-            backend = "cpu",
-            gpu_acceleration = false,
+            active_backend = %device_info.active_backend,
+            gpu_acceleration = device_info.active_backend == "vulkan",
             "Local Whisper transcription completed"
         );
 
@@ -777,7 +843,10 @@ impl TranscriptionProvider for LocalWhisperProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::{sha256_file, verify_model_file, LocalWhisperProvider, ModelManager};
+    use super::{
+        local_compute_device_info, sha256_file, verify_model_file, LocalWhisperProvider,
+        ModelManager,
+    };
     use forge_transcription::{AudioData, TranscriptionOptions, TranscriptionProvider};
     use std::collections::HashMap;
     use std::fs;
@@ -822,6 +891,23 @@ mod tests {
             assert!(model.download_url.contains(&model.revision));
             assert!(model.size_bytes > 0);
         }
+    }
+
+    #[test]
+    fn cpu_compute_device_is_always_available() {
+        let info = local_compute_device_info("cpu");
+
+        assert_eq!(info.requested_device, "cpu");
+        assert_eq!(info.active_backend, "cpu");
+        assert!(info.reason.contains("CPU mode"));
+    }
+
+    #[test]
+    fn unknown_compute_device_defaults_to_cpu() {
+        let info = local_compute_device_info("unknown");
+
+        assert_eq!(info.requested_device, "cpu");
+        assert_eq!(info.active_backend, "cpu");
     }
 
     #[test]

@@ -119,15 +119,11 @@
 - Test harness accepts an externally supplied model path, never commits model weights.
 - Test uses deterministic generated WAV audio or a documented small fixture.
 
-- [x] Add a Windows validation path accepting `FORGE_WHISPER_MODEL_PATH`.
-- [x] Document deterministic speech fixture generation/usage without committing raw audio or model weights.
-- [ ] Record model, hardware, load time, inference time, memory estimate, and output status using a real downloaded model.
-- [ ] Validate Groq and Local provider output through the same cleanup/verification pipeline using a real model fixture.
+- [ ] Add a Windows validation command accepting `FORGE_WHISPER_MODEL_PATH`.
+- [ ] Generate/use a deterministic speech fixture and assert transcript contains expected words.
+- [ ] Record model, hardware, load time, inference time, memory estimate, and output status.
+- [ ] Validate Groq and Local provider output through the same cleanup/verification pipeline.
 - [ ] Run the full verification gate, mark complete, merge to `main`, and create the next branch.
-
-> Progress: external model-path validation and measurement procedure are
-> documented. Real-model transcript/timing evidence remains pending until a
-> model fixture is provisioned on the validation machine.
 
 ---
 

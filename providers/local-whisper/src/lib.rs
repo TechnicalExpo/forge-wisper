@@ -580,6 +580,9 @@ impl TranscriptionProvider for LocalWhisperProvider {
         }
 
         let requested_id = options.model.clone().unwrap_or_else(|| "base".to_string());
+        let external_model_path = std::env::var_os("FORGE_WHISPER_MODEL_PATH")
+            .map(PathBuf::from)
+            .filter(|path| path.is_file());
         let models = self.model_manager.list_available_models();
         let target_model = models.iter().find(|m| m.id == requested_id);
         let effective_model_id = if target_model.map(|m| m.is_installed).unwrap_or(false) {
@@ -591,14 +594,17 @@ impl TranscriptionProvider for LocalWhisperProvider {
                 "No offline Whisper model found. Download a model first.".to_string(),
             ));
         };
-        let model_info = models
-            .iter()
-            .find(|model| model.id == effective_model_id)
-            .ok_or_else(|| ProviderError::ModelError("Selected model is unavailable".to_string()))?;
-        let model_path = self
-            .model_manager
-            .find_model_file(&model_info.filename)
-            .ok_or_else(|| ProviderError::ModelError("Selected model file is missing".to_string()))?;
+        let model_path = if let Some(path) = external_model_path {
+            path
+        } else {
+            let model_info = models
+                .iter()
+                .find(|model| model.id == effective_model_id)
+                .ok_or_else(|| ProviderError::ModelError("Selected model is unavailable".to_string()))?;
+            self.model_manager
+                .find_model_file(&model_info.filename)
+                .ok_or_else(|| ProviderError::ModelError("Selected model file is missing".to_string()))?
+        };
         let language = options.language.clone().unwrap_or_else(|| "auto".to_string());
         let inference_language = language.clone();
         let duration_ms = audio.duration_ms;

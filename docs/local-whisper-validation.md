@@ -47,6 +47,45 @@ $env:RUST_LOG = "forge.performance=info"
 pnpm tauri:dev
 ```
 
+For model download and Local Whisper backend logs, use:
+
+```powershell
+$env:RUST_LOG = "info,forge.model_download=debug,forge.local_whisper=info,forge.hardware=info"
+pnpm tauri:dev:windows
+```
+
+Expected download lifecycle entries are:
+
+```text
+forge.model_download phase=command_started
+forge.model_download phase=started
+forge.model_download phase=connected
+forge.model_download phase=progress percentage=25/50/75/100
+forge.model_download phase=verifying
+forge.model_download phase=installed
+forge.model_download phase=command_completed success=true
+```
+
+The model is ready only after `phase=installed` and
+`phase=command_completed success=true`. A verification failure must show
+`phase=verification_failed`, and no final model binary should be activated.
+
+## GPU Status
+
+The current Local Whisper runtime is intentionally CPU-only. The hardware card
+reports logical CPU cores and system RAM; it does not currently detect or use a
+GPU. The following log entries make that explicit:
+
+```text
+forge.hardware gpu_acceleration=false backend=cpu
+forge.local_whisper phase=transcription_started gpu_acceleration=false backend=cpu
+forge.local_whisper phase=model_loaded gpu_acceleration=false backend=cpu
+```
+
+Therefore Windows Task Manager should show CPU activity during local inference,
+not CUDA/DirectML GPU compute activity. GPU acceleration requires a separate
+whisper.cpp build/backend decision and is not enabled by this release.
+
 Record:
 
 - First model-load time
@@ -55,6 +94,8 @@ Record:
 - Audio duration
 - Final transcript correctness
 - RAM impact if available
+- Download lifecycle phases and whether verification completed successfully
+- Backend log values for `backend` and `gpu_acceleration`
 
 ## Automated Fixture Work
 

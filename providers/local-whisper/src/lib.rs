@@ -12,6 +12,8 @@ use std::io::Write;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
+use tracing::{debug, info, warn};
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 use sha2::{Digest, Sha256};
 
@@ -50,6 +52,7 @@ pub struct HardwareRecommendation {
 pub struct ModelManager {
     models_dir: PathBuf,
     active_downloads: Arc<Mutex<HashMap<String, ModelDownloadProgress>>>,
+    search_fallback_paths: bool,
 }
 
 impl ModelManager {
@@ -61,6 +64,7 @@ impl ModelManager {
         Self {
             models_dir,
             active_downloads: Arc::new(Mutex::new(HashMap::new())),
+            search_fallback_paths: true,
         }
     }
 
@@ -91,6 +95,15 @@ impl ModelManager {
 
         // Check primary models_dir
         candidates.push(self.models_dir.join(filename));
+
+        if !self.search_fallback_paths {
+            return candidates.into_iter().find(|path| {
+                path.exists()
+                    && std::fs::metadata(path)
+                        .map(|metadata| metadata.len() > 1024 * 1024)
+                        .unwrap_or(false)
+            });
+        }
 
         // Check workspace "models/"
         candidates.push(Path::new("models").join(filename));
@@ -269,6 +282,15 @@ impl ModelManager {
 
         let dest_path = self.models_dir.join(&target.filename);
         let part_path = self.models_dir.join(format!("{}.part", target.filename));
+        let started = Instant::now();
+        info!(
+            target: "forge.model_download",
+            phase = "started",
+            model_id,
+            filename = %target.filename,
+            destination = %dest_path.display(),
+            "Starting Local Whisper model download"
+        );
         let client = Client::new();
         let mut response = client
             .get(&target.download_url)
@@ -287,7 +309,16 @@ impl ModelManager {
             .content_length()
             .unwrap_or(target.size_mb * 1024 * 1024);
 
+        info!(
+            target: "forge.model_download",
+            phase = "connected",
+            model_id,
+            total_bytes = total_size,
+            "Connected to model download source"
+        );
+
         let mut downloaded: u64 = 0;
+        let mut next_logged_percentage = 25;
         let mut file = File::create(&part_path)
             .map_err(|e| ProviderError::ModelError(e.to_string()))?;
 
@@ -336,6 +367,19 @@ impl ModelManager {
             }
 
             progress(downloaded, total_size);
+
+            if percentage >= next_logged_percentage || percentage >= 100 {
+                debug!(
+                    target: "forge.model_download",
+                    phase = "progress",
+                    model_id,
+                    downloaded_bytes = downloaded,
+                    total_bytes = total_size,
+                    percentage,
+                    "Local Whisper model download progress"
+                );
+                next_logged_percentage = ((percentage / 25) + 1) * 25;
+            }
         }
 
         if let Err(e) = file.flush() {
@@ -344,7 +388,22 @@ impl ModelManager {
             return Err(ProviderError::ModelError(e.to_string()));
         }
 
+        info!(
+            target: "forge.model_download",
+            phase = "verifying",
+            model_id,
+            elapsed_ms = started.elapsed().as_millis() as u64,
+            "Download complete; verifying model size and SHA-256"
+        );
+
         if let Err(error) = verify_model_file(&part_path, target.size_bytes, &target.sha256) {
+            warn!(
+                target: "forge.model_download",
+                phase = "verification_failed",
+                model_id,
+                error = %error,
+                "Local Whisper model verification failed"
+            );
             let _ = self.active_downloads.lock().unwrap().remove(model_id);
             let _ = remove_file(&part_path);
             return Err(ProviderError::ModelError(format!(
@@ -359,6 +418,15 @@ impl ModelManager {
             let _ = remove_file(&part_path);
             return Err(ProviderError::ModelError(e.to_string()));
         }
+
+        info!(
+            target: "forge.model_download",
+            phase = "installed",
+            model_id,
+            path = %dest_path.display(),
+            elapsed_ms = started.elapsed().as_millis() as u64,
+            "Local Whisper model verified and installed"
+        );
 
         // Cleanup active download
         {
@@ -500,6 +568,15 @@ impl HardwareDetector {
             )
         };
 
+        info!(
+            target: "forge.hardware",
+            logical_cores,
+            estimated_ram_gb = ram_gb,
+            gpu_acceleration = false,
+            backend = "cpu",
+            "Local Whisper hardware recommendation detected"
+        );
+
         HardwareRecommendation {
             logical_cores,
             estimated_ram_gb: ram_gb,
@@ -608,6 +685,18 @@ impl TranscriptionProvider for LocalWhisperProvider {
         let language = options.language.clone().unwrap_or_else(|| "auto".to_string());
         let inference_language = language.clone();
         let duration_ms = audio.duration_ms;
+        let transcription_started = Instant::now();
+
+        info!(
+            target: "forge.local_whisper",
+            phase = "transcription_started",
+            model_id = %effective_model_id,
+            model_path = %model_path.display(),
+            audio_duration_ms = duration_ms,
+            backend = "cpu",
+            gpu_acceleration = false,
+            "Starting Local Whisper transcription"
+        );
 
         let text = tokio::task::spawn_blocking(move || {
             let mut reader = hound::WavReader::new(Cursor::new(audio.wav_bytes))
@@ -628,6 +717,13 @@ impl TranscriptionProvider for LocalWhisperProvider {
                 WhisperContextParameters::default(),
             )
             .map_err(|e| ProviderError::ModelError(e.to_string()))?;
+            info!(
+                target: "forge.local_whisper",
+                phase = "model_loaded",
+                backend = "cpu",
+                gpu_acceleration = false,
+                "Local Whisper model loaded"
+            );
             let mut state = context
                 .create_state()
                 .map_err(|e| ProviderError::ModelError(e.to_string()))?;
@@ -657,6 +753,17 @@ impl TranscriptionProvider for LocalWhisperProvider {
         .await
         .map_err(|e| ProviderError::InternalError(e.to_string()))??;
 
+        info!(
+            target: "forge.local_whisper",
+            phase = "transcription_completed",
+            model_id = %effective_model_id,
+            audio_duration_ms = duration_ms,
+            elapsed_ms = transcription_started.elapsed().as_millis() as u64,
+            backend = "cpu",
+            gpu_acceleration = false,
+            "Local Whisper transcription completed"
+        );
+
         Ok(Transcript {
             text,
             language,
@@ -670,14 +777,21 @@ impl TranscriptionProvider for LocalWhisperProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::{sha256_file, verify_model_file, LocalWhisperProvider};
+    use super::{sha256_file, verify_model_file, LocalWhisperProvider, ModelManager};
     use forge_transcription::{AudioData, TranscriptionOptions, TranscriptionProvider};
+    use std::collections::HashMap;
     use std::fs;
+    use std::sync::{Arc, Mutex};
     use tempfile::tempdir;
 
     #[tokio::test]
     async fn missing_model_returns_a_clear_error() {
-        let provider = LocalWhisperProvider::default();
+        let dir = tempdir().unwrap();
+        let provider = LocalWhisperProvider::new(Arc::new(ModelManager {
+            models_dir: dir.path().to_path_buf(),
+            active_downloads: Arc::new(Mutex::new(HashMap::new())),
+            search_fallback_paths: false,
+        }));
         let result = provider
             .transcribe(
                 AudioData::new(vec![1, 2, 3], 16_000, 1, 10),

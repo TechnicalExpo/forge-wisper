@@ -226,10 +226,17 @@ pub async fn download_model(
     model_id: String,
     state: State<'_, PipelineState>,
 ) -> Result<String, String> {
+    let started = std::time::Instant::now();
+    tracing::info!(
+        target: "forge.model_download",
+        phase = "command_started",
+        model_id = %model_id,
+        "Download model command started"
+    );
     let app_handle = app.clone();
     let mid = model_id.clone();
 
-    state
+    let result = state
         .model_manager
         .download_model_with_progress(&model_id, move |downloaded, total| {
             let percentage = if total > 0 {
@@ -249,7 +256,17 @@ pub async fn download_model(
         })
         .await
         .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string());
+
+    tracing::info!(
+        target: "forge.model_download",
+        phase = if result.is_ok() { "command_completed" } else { "command_failed" },
+        model_id = %model_id,
+        elapsed_ms = started.elapsed().as_millis() as u64,
+        success = result.is_ok(),
+        "Download model command finished"
+    );
+    result
 }
 
 #[tauri::command]

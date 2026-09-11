@@ -1,6 +1,6 @@
 {
   "productName": "Forge Wisper",
-  "version": "0.1.7",
+  "version": "0.1.9",
   "identifier": "com.alizazan.forgewisper",
   "build": {
     "beforeDevCommand": "pnpm dev",

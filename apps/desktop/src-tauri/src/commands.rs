@@ -6,6 +6,7 @@ use forge_security::SecretStore;
 use forge_storage::HistoryRecord;
 use forge_transcription::Transcript;
 use tauri::{AppHandle, Emitter, State};
+use tauri_plugin_global_shortcut::GlobalShortcutExt;
 use std::time::Instant;
 
 #[tauri::command]
@@ -74,7 +75,11 @@ pub fn update_settings(
     }
 
     if update_plan.update_hotkey {
-        crate::register_global_hotkey(&app, &settings.hotkey)?;
+        if crate::uses_super_modifier(&settings.hotkey) {
+            let _ = app.global_shortcut().unregister_all();
+        } else {
+            crate::register_global_hotkey(&app, &settings.hotkey)?;
+        }
     }
 
     // Persist settings and update in-memory state after external validation.

@@ -29,6 +29,19 @@ pub struct HistoryRecord {
     pub verification_status: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+pub struct DashboardMetrics {
+    pub words_transcribed: u64,
+    pub total_duration_ms: u64,
+    pub sessions_count: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PaginatedHistory {
+    pub records: Vec<HistoryRecord>,
+    pub total_count: u64,
+}
+
 #[derive(Debug, Error)]
 pub enum StorageError {
     #[error("Database error: {0}")]
@@ -133,20 +146,38 @@ impl StorageEngine {
     }
 
     pub fn list_records(&self, limit: usize, search: Option<&str>) -> Result<Vec<HistoryRecord>, StorageError> {
+        Ok(self.list_records_page(0, limit, search)?.records)
+    }
+
+    pub fn list_records_page(
+        &self,
+        offset: usize,
+        limit: usize,
+        search: Option<&str>,
+    ) -> Result<PaginatedHistory, StorageError> {
         let conn = self.conn.lock().unwrap();
         let mut results = Vec::new();
+        let pattern = search.map(|query| format!("%{}%", query));
+        let total_count: u64 = if let Some(pattern) = pattern.as_ref() {
+            conn.query_row(
+                "SELECT COUNT(*) FROM dictation_history WHERE raw_text LIKE ?1 OR final_text LIKE ?1",
+                params![pattern],
+                |row| row.get(0),
+            )?
+        } else {
+            conn.query_row("SELECT COUNT(*) FROM dictation_history", [], |row| row.get(0))?
+        };
 
-        if let Some(query) = search {
-            let pattern = format!("%{}%", query);
+        if let Some(pattern) = pattern {
             let mut stmt = conn.prepare(
                 "SELECT id, created_at, app_name, provider_id, model_name, raw_text, final_text, duration_ms, verification_status
                  FROM dictation_history
                  WHERE raw_text LIKE ?1 OR final_text LIKE ?1
                  ORDER BY created_at DESC
-                 LIMIT ?2",
+                 LIMIT ?2 OFFSET ?3",
             )?;
 
-            let rows = stmt.query_map(params![pattern, limit as i64], |row| {
+            let rows = stmt.query_map(params![pattern, limit as i64, offset as i64], |row| {
                 Ok(HistoryRecord {
                     id: row.get(0)?,
                     created_at: row.get(1)?,
@@ -168,10 +199,10 @@ impl StorageEngine {
                 "SELECT id, created_at, app_name, provider_id, model_name, raw_text, final_text, duration_ms, verification_status
                  FROM dictation_history
                  ORDER BY created_at DESC
-                 LIMIT ?1",
+                 LIMIT ?1 OFFSET ?2",
             )?;
 
-            let rows = stmt.query_map(params![limit as i64], |row| {
+            let rows = stmt.query_map(params![limit as i64, offset as i64], |row| {
                 Ok(HistoryRecord {
                     id: row.get(0)?,
                     created_at: row.get(1)?,
@@ -190,7 +221,31 @@ impl StorageEngine {
             }
         }
 
-        Ok(results)
+        Ok(PaginatedHistory { records: results, total_count })
+    }
+
+    pub fn dashboard_metrics(&self, timeframe: &str) -> Result<DashboardMetrics, StorageError> {
+        let conn = self.conn.lock().unwrap();
+        let cutoff = match timeframe {
+            "Today" => Some(Utc::now().date_naive().and_hms_opt(0, 0, 0).unwrap().and_utc().to_rfc3339()),
+            "Week" => Some((Utc::now() - chrono::Duration::days(7)).to_rfc3339()),
+            _ => None,
+        };
+        let sql = if cutoff.is_some() {
+            "SELECT COUNT(*), COALESCE(SUM(duration_ms), 0), COALESCE(SUM(CASE WHEN length(trim(final_text)) = 0 THEN 0 ELSE length(trim(final_text)) - length(replace(trim(final_text), ' ', '')) + 1 END), 0) FROM dictation_history WHERE created_at >= ?1"
+        } else {
+            "SELECT COUNT(*), COALESCE(SUM(duration_ms), 0), COALESCE(SUM(CASE WHEN length(trim(final_text)) = 0 THEN 0 ELSE length(trim(final_text)) - length(replace(trim(final_text), ' ', '')) + 1 END), 0) FROM dictation_history"
+        };
+        let values = if let Some(cutoff) = cutoff {
+            conn.query_row(sql, params![cutoff], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+        } else {
+            conn.query_row(sql, [], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+        };
+        Ok(DashboardMetrics {
+            sessions_count: values.0,
+            total_duration_ms: values.1,
+            words_transcribed: values.2,
+        })
     }
 
     pub fn delete_record(&self, id: &str) -> Result<bool, StorageError> {
@@ -248,6 +303,15 @@ mod tests {
 
         let items = engine.list_records(10, None).unwrap();
         assert_eq!(items.len(), 1);
+
+        let page = engine.list_records_page(0, 1, None).unwrap();
+        assert_eq!(page.total_count, 1);
+        assert_eq!(page.records.len(), 1);
+
+        let metrics = engine.dashboard_metrics("All").unwrap();
+        assert_eq!(metrics.sessions_count, 1);
+        assert_eq!(metrics.total_duration_ms, 1200);
+        assert_eq!(metrics.words_transcribed, 5);
         assert_eq!(items[0].raw_text, "Schedule the meeting for Friday");
 
         let search_items = engine.list_records(10, Some("Friday")).unwrap();

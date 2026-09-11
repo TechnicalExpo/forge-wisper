@@ -385,28 +385,32 @@ latency/memory result to the release notes.
 - Add `get_dashboard_metrics(timeframe)`.
 - Add paginated history query with `offset`, `limit`, and search.
 
-- [ ] **Step 1: Add storage aggregate queries**
+- [x] **Step 1: Add storage aggregate queries**
 
 Return session count, total duration, and total word count for Today, Week, and All.
 
-- [ ] **Step 2: Add backend commands and TypeScript API functions**
+- [x] **Step 2: Add backend commands and TypeScript API functions**
 
 Return only aggregate values for dashboard metrics.
 
-- [ ] **Step 3: Add 250 ms history-search debounce**
+- [x] **Step 3: Add 250 ms history-search debounce**
 
 Ignore stale responses when a newer query has already started.
 
-- [ ] **Step 4: Replace renderer-side pagination with database pagination**
+- [x] **Step 4: Replace renderer-side pagination with database pagination**
 
 Preserve existing page sizes and UI behavior.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 ```powershell
 cargo test -p forge-storage
 pnpm --filter @forge-wisper/desktop build
 ```
+
+> Task 10 is implemented on `perf/dashboard-history-queries`. Dashboard
+> metrics now use SQL aggregates, and HistoryView requests only the current
+> page. Search is debounced by 250 ms and stale requests are ignored.
 
 ---
 

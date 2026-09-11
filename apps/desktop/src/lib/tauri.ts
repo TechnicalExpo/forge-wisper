@@ -6,6 +6,7 @@ import type {
   HardwareRecommendation,
   HistoryRecord,
   LocalModelInfo,
+  ComputeDevice,
   ProcessingState,
   FormattingMode,
 } from "../types";
@@ -20,6 +21,13 @@ export const api = {
   getSettings: () => invoke<AppSettings>("get_settings"),
   updateSettings: (settings: AppSettings) =>
     invoke<void>("update_settings", { settings }),
+  getLocalComputeDeviceInfo: () => invoke<{
+    requested_device: ComputeDevice;
+    active_backend: string;
+    gpu_available: boolean;
+    gpu_name: string | null;
+    reason: string;
+  }>("get_local_compute_device_info"),
 
   getAudioDevices: () => invoke<AudioDeviceInfo[]>("get_audio_devices"),
 

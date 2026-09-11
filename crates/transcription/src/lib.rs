@@ -25,6 +25,7 @@ impl AudioData {
 pub struct TranscriptionOptions {
     pub language: Option<String>,
     pub model: Option<String>,
+    pub compute_device: Option<String>,
     pub temperature: Option<f32>,
     pub prompt: Option<String>,
 }
@@ -34,6 +35,7 @@ impl Default for TranscriptionOptions {
         Self {
             language: None,
             model: None,
+            compute_device: None,
             temperature: Some(0.0),
             prompt: None,
         }

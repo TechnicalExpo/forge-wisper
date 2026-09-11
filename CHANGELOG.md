@@ -9,6 +9,14 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.0] - 2026-09-11
+
+### Added
+
+- Added Local Whisper CPU/GPU compute-device selection with CPU as the default.
+- Added Windows Vulkan backend support with NVIDIA, AMD, and Intel device discovery.
+- Added explicit GPU-mode errors instead of silently falling back to CPU.
+
 ## [0.2.3] - 2026-09-11
 
 ### Added

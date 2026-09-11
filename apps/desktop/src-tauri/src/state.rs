@@ -34,6 +34,8 @@ pub enum ProcessingState {
 pub struct AppSettings {
     pub provider: String,            // "groq", "local-whisper"
     pub model: String,               // e.g. "whisper-large-v3-turbo" or "base"
+    #[serde(default = "default_compute_device")]
+    pub compute_device: String,      // "cpu" or "gpu"
     pub microphone: Option<String>,
     pub formatting_mode: FormattingMode,
     pub hotkey: String,              // "Control+Space"
@@ -65,12 +67,17 @@ fn default_theme() -> String {
     "light".to_string()
 }
 
+fn default_compute_device() -> String {
+    "cpu".to_string()
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         let defaults = CleanupOptions::default();
         Self {
             provider: "groq".to_string(),
             model: "whisper-large-v3-turbo".to_string(),
+            compute_device: default_compute_device(),
             microphone: None,
             formatting_mode: FormattingMode::Smart,
             hotkey: "Control+Space".to_string(),
@@ -322,9 +329,9 @@ impl PipelineState {
             elapsed_ms = encode_started.elapsed().as_millis() as u64,
         );
 
-        let (provider_name, model_name, fmt_mode, dict, snippets, retention) = {
+        let (provider_name, model_name, compute_device, fmt_mode, dict, snippets, retention) = {
             let s = self.settings.lock().unwrap();
-            (s.provider.clone(), s.model.clone(), s.formatting_mode, s.dictionary.clone(), s.snippets.clone(), s.retention_policy)
+            (s.provider.clone(), s.model.clone(), s.compute_device.clone(), s.formatting_mode, s.dictionary.clone(), s.snippets.clone(), s.retention_policy)
         };
 
         let audio_data = AudioData::new(wav_bytes, 16000, 1, start_time.elapsed().as_millis() as u64);
@@ -337,6 +344,7 @@ impl PipelineState {
                 self.local_provider
                     .transcribe(audio_data, TranscriptionOptions {
                         model: Some(model_name.clone()),
+                        compute_device: Some(compute_device.clone()),
                         ..Default::default()
                     })
                     .await

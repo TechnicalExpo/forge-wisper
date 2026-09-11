@@ -12,12 +12,14 @@ export type ProcessingState =
   | "Error";
 
 export type FormattingMode = "Raw" | "Clean" | "Structured" | "Smart";
+export type ComputeDevice = "cpu" | "gpu";
 
 export type RetentionPolicy = "Forever" | "Days30" | "Days7" | "Off";
 
 export interface AppSettings {
   provider: string;
   model: string;
+  compute_device: ComputeDevice;
   microphone: string | null;
   formatting_mode: FormattingMode;
   hotkey: string;

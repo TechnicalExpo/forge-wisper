@@ -74,6 +74,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
 
   // Microphone Live Testing
   const [isMicTesting, setIsMicTesting] = useState(false);
+  const [computeInfo, setComputeInfo] = useState<{
+    requested_device: "cpu" | "gpu";
+    active_backend: string;
+    gpu_available: boolean;
+    gpu_name: string | null;
+    reason: string;
+  } | null>(null);
   const [micLevel, setMicLevel] = useState(0);
   const stopMicPollingRef = useRef<(() => void) | null>(null);
 
@@ -202,6 +209,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
       setAudioDevices(devices);
       const keyStatus = await api.getGroqKeyStatus();
       setHasStoredKey(keyStatus);
+      setComputeInfo(await api.getLocalComputeDeviceInfo());
     } catch (e) {
       console.error(e);
     }
@@ -220,6 +228,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
     try {
       await api.updateSettings(updated);
       setAppSettings(updated);
+      if (updated.provider === "local-whisper") {
+        setComputeInfo(await api.getLocalComputeDeviceInfo());
+      }
       setSaveSuccess(true);
       document.documentElement.setAttribute("data-theme", resolveEffectiveTheme(updated.theme));
       setTimeout(() => setSaveSuccess(false), 2000);
@@ -432,6 +443,40 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
               </div>
             </div>
           </div>
+
+          {settings.provider === "local-whisper" && (
+            <div className="forge-card p-4 space-y-3 rounded-[8px] border border-[var(--border)] bg-[var(--surface-primary)]">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-[13px] font-medium text-[var(--text-primary)]">Compute Device</h3>
+                  <p className="text-[12px] text-[var(--text-secondary)] mt-1">
+                    CPU is the default. GPU mode uses Vulkan when available.
+                  </p>
+                </div>
+                <select
+                  value={settings.compute_device}
+                  onChange={(e) =>
+                    handleSave({
+                      ...settings,
+                      compute_device: e.target.value as "cpu" | "gpu",
+                    })
+                  }
+                  className="px-3 py-2 bg-[var(--surface-primary)] border border-[var(--border)] rounded-[7px] text-[13px] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)] cursor-pointer"
+                >
+                  <option value="cpu">CPU (Default)</option>
+                  <option value="gpu">GPU</option>
+                </select>
+              </div>
+              <div className="text-[11px] font-mono text-[var(--text-secondary)]">
+                {computeInfo?.gpu_available
+                  ? `GPU available: ${computeInfo.gpu_name ?? "Vulkan device"}`
+                  : "GPU backend unavailable in this build; CPU mode is available."}
+              </div>
+              {settings.compute_device === "gpu" && computeInfo && !computeInfo.gpu_available && (
+                <div className="text-[12px] text-[var(--warning)]">{computeInfo.reason}</div>
+              )}
+            </div>
+          )}
 
           {/* 2-Column Grid: Model Architecture & Microphone Device */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">

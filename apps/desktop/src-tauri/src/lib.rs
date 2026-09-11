@@ -163,6 +163,7 @@ pub fn run() {
             get_active_model_downloads,
             delete_model,
             get_hardware_recommendation,
+            get_local_compute_device_info,
             open_url,
             get_autostart_status,
             set_autostart_status

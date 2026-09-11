@@ -16,7 +16,10 @@ tracing = { workspace = true }
 reqwest = { workspace = true }
 directories = { workspace = true }
 hound = { workspace = true }
-whisper-rs = "0.16.0"
+whisper-rs = { version = "0.16.0", default-features = false, features = ["tracing_backend"] }
+
+[target.'cfg(windows)'.dependencies]
+whisper-rs = { version = "0.16.0", features = ["vulkan"] }
 sha2 = "0.10"
 
 [dev-dependencies]

@@ -17,6 +17,10 @@ $env:LIBCLANG_PATH = "C:\Program Files\LLVM\bin"
 $env:Path = "C:\Program Files\CMake\bin;C:\Program Files\LLVM\bin;$env:USERPROFILE\.cargo\bin;$env:Path"
 ```
 
+The Windows launcher automatically discovers the newest Vulkan SDK under
+`C:\VulkanSDK`, validates `glslc.exe`, and uses `C:\t` as a
+short Cargo target directory to avoid MSBuild's nested Vulkan shader path limit.
+
 For development, the repository provides a repeatable launcher that performs this setup and loads the MSVC environment automatically:
 
 ```powershell
@@ -72,19 +76,21 @@ The model is ready only after `phase=installed` and
 
 ## GPU Status
 
-The current Local Whisper runtime is intentionally CPU-only. The hardware card
-reports logical CPU cores and system RAM; it does not currently detect or use a
-GPU. The following log entries make that explicit:
+Windows x64 builds include the Vulkan Whisper backend. The hardware card reports
+logical CPU cores and system RAM, while the Local Whisper compute status reports
+Vulkan GPU devices separately.
 
 ```text
-forge.hardware gpu_acceleration=false backend=cpu
-forge.local_whisper phase=transcription_started gpu_acceleration=false backend=cpu
-forge.local_whisper phase=model_loaded gpu_acceleration=false backend=cpu
+forge.local_whisper requested_device=cpu active_backend=cpu gpu_available=true
+forge.local_whisper requested_device=gpu active_backend=vulkan gpu_available=true
+forge.local_whisper phase=transcription_started gpu_acceleration=true active_backend=vulkan
+forge.local_whisper phase=model_loaded gpu_acceleration=true active_backend=vulkan
 ```
 
-Therefore Windows Task Manager should show CPU activity during local inference,
-not CUDA/DirectML GPU compute activity. GPU acceleration requires a separate
-whisper.cpp build/backend decision and is not enabled by this release.
+In CPU mode, the app detects the GPU but does not use it. In GPU mode, Windows
+Task Manager should show activity and dedicated memory usage on the selected
+Vulkan device. The discrete NVIDIA device is preferred over integrated Intel
+when both are available.
 
 Record:
 

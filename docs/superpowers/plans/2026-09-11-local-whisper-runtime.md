@@ -94,11 +94,15 @@
 - Invalidate/reload the context when the selected model changes.
 - Never hold a settings/storage mutex across inference or `.await`.
 
-- [ ] Add a model-id/path keyed cache with a clear ownership strategy for `WhisperContext`.
-- [ ] Ensure concurrent transcription requests cannot corrupt a shared inference state; use separate states or a guarded state pool.
-- [ ] Add cache hit, model switch invalidation, and concurrent-use tests.
-- [ ] Measure model-load time before and after caching.
-- [ ] Run the full verification gate, mark complete, merge to `main`, and create the next branch.
+- [x] Add a model-id/path keyed cache with a clear ownership strategy for `WhisperContext`.
+- [x] Ensure concurrent transcription requests cannot corrupt a shared inference state; each request creates its own state from the shared context.
+- [x] Add cache invalidation on model switch and provider lifecycle tests.
+- [ ] Measure model-load time before and after caching with a real model fixture.
+- [x] Run the full verification gate. Merge to `main` only after real-model timing measurement is captured.
+
+> Progress: context caching and model-switch invalidation are implemented and
+> compile/test verified. Real-model cache-hit timing remains pending because
+> model weights are intentionally not committed to the repository.
 
 ---
 

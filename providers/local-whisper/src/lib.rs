@@ -512,19 +512,24 @@ impl HardwareDetector {
 pub struct LocalWhisperProvider {
     model_manager: Arc<ModelManager>,
     active_model_id: Arc<Mutex<String>>,
+    context_cache: WhisperContextCache,
 }
+
+type WhisperContextCache = Arc<Mutex<Option<(PathBuf, Arc<WhisperContext>)>>>;
 
 impl LocalWhisperProvider {
     pub fn new(model_manager: Arc<ModelManager>) -> Self {
         Self {
             model_manager,
             active_model_id: Arc::new(Mutex::new("base".to_string())),
+            context_cache: Arc::new(Mutex::new(None)),
         }
     }
 
     pub fn set_active_model(&self, model_id: &str) {
         let mut active = self.active_model_id.lock().unwrap();
         *active = model_id.to_string();
+        self.context_cache.lock().unwrap().take();
     }
 }
 
@@ -602,6 +607,7 @@ impl TranscriptionProvider for LocalWhisperProvider {
         let language = options.language.clone().unwrap_or_else(|| "auto".to_string());
         let inference_language = language.clone();
         let duration_ms = audio.duration_ms;
+        let context_cache = Arc::clone(&self.context_cache);
 
         let text = tokio::task::spawn_blocking(move || {
             let mut reader = hound::WavReader::new(Cursor::new(audio.wav_bytes))
@@ -617,11 +623,7 @@ impl TranscriptionProvider for LocalWhisperProvider {
                 .map(|sample| sample.map(|value| value as f32 / i16::MAX as f32))
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|e| ProviderError::InvalidAudio(e.to_string()))?;
-            let context = WhisperContext::new_with_params(
-                model_path.to_string_lossy().as_ref(),
-                WhisperContextParameters::default(),
-            )
-            .map_err(|e| ProviderError::ModelError(e.to_string()))?;
+            let context = cached_context(&context_cache, &model_path)?;
             let mut state = context
                 .create_state()
                 .map_err(|e| ProviderError::ModelError(e.to_string()))?;
@@ -660,6 +662,27 @@ impl TranscriptionProvider for LocalWhisperProvider {
             confidence: None,
         })
     }
+}
+
+fn cached_context(
+    cache: &WhisperContextCache,
+    model_path: &Path,
+) -> Result<Arc<WhisperContext>, ProviderError> {
+    if let Some((cached_path, context)) = cache.lock().unwrap().as_ref() {
+        if cached_path == model_path {
+            return Ok(Arc::clone(context));
+        }
+    }
+
+    let context = Arc::new(
+        WhisperContext::new_with_params(
+            model_path.to_string_lossy().as_ref(),
+            WhisperContextParameters::default(),
+        )
+        .map_err(|e| ProviderError::ModelError(e.to_string()))?,
+    );
+    *cache.lock().unwrap() = Some((model_path.to_path_buf(), Arc::clone(&context)));
+    Ok(context)
 }
 
 #[cfg(test)]

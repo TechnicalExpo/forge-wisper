@@ -24,7 +24,15 @@ export const ModelManagerView: React.FC = () => {
   const { settings } = useAppStore();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<
-    Record<string, { downloaded: number; total: number; percentage: number }>
+    Record<
+      string,
+      {
+        downloaded: number;
+        total: number;
+        percentage: number;
+        phase: "starting" | "downloading" | "verifying";
+      }
+    >
   >({});
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -36,20 +44,11 @@ export const ModelManagerView: React.FC = () => {
           downloaded: payload.downloaded_bytes,
           total: payload.total_bytes,
           percentage: payload.percentage,
+          phase: payload.percentage >= 100 ? "verifying" : "downloading",
         },
       }));
 
-      // When download finishes, remove from progress tracker and refresh models list
-      if (payload.percentage >= 100) {
-        setTimeout(() => {
-          setDownloadProgress((prev) => {
-            const copy = { ...prev };
-            delete copy[payload.model_id];
-            return copy;
-          });
-          loadModels();
-        }, 500);
-      }
+      // Keep the 100% state visible while the backend verifies and activates the binary.
     });
 
     return () => {
@@ -80,6 +79,7 @@ export const ModelManagerView: React.FC = () => {
               downloaded: info.downloaded_bytes,
               total: info.total_bytes,
               percentage: info.percentage,
+              phase: info.percentage >= 100 ? "verifying" : "downloading",
             };
           }
           return updated;
@@ -107,8 +107,17 @@ export const ModelManagerView: React.FC = () => {
     try {
       setDownloadingId(id);
       setErrorMsg(null);
+      setDownloadProgress((prev) => ({
+        ...prev,
+        [id]: { downloaded: 0, total: 0, percentage: 0, phase: "starting" },
+      }));
       await api.downloadModel(id);
       await loadModels();
+      setDownloadProgress((prev) => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
 
       // Automatically activate the newly downloaded model for immediate use
       if (settings) {
@@ -122,6 +131,11 @@ export const ModelManagerView: React.FC = () => {
       }
     } catch (e) {
       setErrorMsg(`Download failed: ${e}`);
+      setDownloadProgress((prev) => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
     } finally {
       setDownloadingId(null);
     }
@@ -321,10 +335,16 @@ export const ModelManagerView: React.FC = () => {
                     <div className="flex items-center justify-between text-[12px] font-mono">
                       <span className="flex items-center gap-1.5 text-[var(--accent)] font-medium">
                         <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                        Downloading Binary...
+                        {downloadProgress[model.id]?.phase === "verifying"
+                          ? "Verifying model..."
+                          : downloadProgress[model.id]?.phase === "starting"
+                            ? "Starting download..."
+                            : "Downloading binary..."}
                       </span>
                       <span className="text-[var(--text-secondary)]">
-                        {downloadProgress[model.id] && downloadProgress[model.id].total > 0
+                        {downloadProgress[model.id]?.phase === "starting"
+                          ? `Preparing (~${model.size_mb} MB)...`
+                          : downloadProgress[model.id] && downloadProgress[model.id].total > 0
                           ? `${(downloadProgress[model.id].downloaded / 1024 / 1024).toFixed(1)} / ${(downloadProgress[model.id].total / 1024 / 1024).toFixed(1)} MB (${downloadProgress[model.id].percentage}%)`
                           : `Connecting (~${model.size_mb} MB)...`}
                       </span>

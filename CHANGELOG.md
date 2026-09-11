@@ -9,6 +9,21 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.2.3] - 2026-09-11
+
+### Added
+
+- Added Local Whisper download, verification, installation, transcription, and
+  backend-selection logs for manual E2E diagnostics.
+- Documented that the current Local Whisper runtime uses CPU inference only.
+
+## [0.2.2] - 2026-09-11
+
+### Fixed
+
+- Clarified Local Whisper model download states by showing startup, download,
+  verification, and installed-ready phases separately.
+
 ## [0.2.1] - 2026-09-11
 
 ### Security

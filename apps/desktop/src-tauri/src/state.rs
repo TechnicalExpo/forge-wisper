@@ -98,10 +98,6 @@ impl AppSettings {
             if path.exists() {
                 if let Ok(content) = std::fs::read_to_string(&path) {
                     if let Ok(mut settings) = serde_json::from_str::<AppSettings>(&content) {
-                        if settings.provider == "local-whisper" {
-                            settings.provider = "groq".to_string();
-                            settings.model = "whisper-large-v3-turbo".to_string();
-                        }
                         if SecretStore::get_secret("groq_api_key").is_ok() && settings.provider == "mock" {
                             settings.provider = "groq".to_string();
                             settings.model = "whisper-large-v3-turbo".to_string();
@@ -160,9 +156,9 @@ impl PipelineState {
             active_recorder: Mutex::new(None),
             is_active_recording: AtomicBool::new(false),
             storage,
-            model_manager,
+            model_manager: Arc::clone(&model_manager),
             groq_provider,
-            local_provider: Arc::new(LocalWhisperProvider::new()),
+            local_provider: Arc::new(LocalWhisperProvider::new(Arc::clone(&model_manager))),
             last_recording_toggle: Arc::new(Mutex::new(Instant::now())),
         }
     }

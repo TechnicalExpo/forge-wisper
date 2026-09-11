@@ -100,11 +100,6 @@ pub fn run() {
             let quit_i = MenuItem::with_id(app, "quit", "Quit Forge Wisper", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
-            #[cfg(target_os = "windows")]
-            {
-                start_native_windows_hotkey_listener(app.handle().clone());
-            }
-
             if let Some(icon) = app.default_window_icon() {
                 let _tray = TrayIconBuilder::new()
                     .icon(icon.clone())
@@ -406,16 +401,18 @@ fn register_global_hotkey_inner<R: tauri::Runtime>(
         }
     }
 
-    println!("[Forge Shortcut] Global hotkey configured to '{}' (Universal Native OS Listener Active)", clean);
+    println!("[Forge Shortcut] Global hotkey configured to '{}'", clean);
     Ok(clean.to_string())
 }
 
 #[cfg(target_os = "windows")]
+#[allow(dead_code)]
 extern "system" {
     fn GetAsyncKeyState(vKey: i32) -> i16;
 }
 
 #[cfg(target_os = "windows")]
+#[allow(dead_code)]
 fn is_vk_down(vk: i32) -> bool {
     unsafe {
         // Special case for Windows/Super key: check both Left Win (0x5B) and Right Win (0x5C)
@@ -442,6 +439,7 @@ fn is_vk_down(vk: i32) -> bool {
     }
 }
 
+#[allow(dead_code)]
 pub fn parse_hotkey_to_vks(hotkey_str: &str) -> Vec<i32> {
     let mut vks = Vec::new();
     let parts: Vec<&str> = hotkey_str.split('+').map(|p| p.trim()).collect();
@@ -502,6 +500,7 @@ pub fn parse_hotkey_to_vks(hotkey_str: &str) -> Vec<i32> {
 }
 
 #[cfg(target_os = "windows")]
+#[allow(dead_code)]
 fn start_native_windows_hotkey_listener(app: tauri::AppHandle) {
     std::thread::spawn(move || {
         let mut was_combo_pressed = false;
@@ -564,4 +563,27 @@ fn start_native_windows_hotkey_listener(app: tauri::AppHandle) {
             }
         }
     });
+}
+
+#[cfg(test)]
+mod hotkey_tests {
+    use super::parse_shortcut_explicit;
+    use tauri_plugin_global_shortcut::{Code, Modifiers};
+
+    #[test]
+    fn canonical_parser_accepts_toggle_shortcut() {
+        let shortcut = parse_shortcut_explicit("Control+Space").expect("shortcut should parse");
+
+        assert_eq!(shortcut.mods, Modifiers::CONTROL);
+        assert_eq!(shortcut.key, Code::Space);
+    }
+
+    #[test]
+    fn canonical_parser_accepts_push_to_talk_shortcut() {
+        let shortcut =
+            parse_shortcut_explicit("Control+Alt+Space").expect("shortcut should parse");
+
+        assert_eq!(shortcut.mods, Modifiers::CONTROL | Modifiers::ALT);
+        assert_eq!(shortcut.key, Code::Space);
+    }
 }

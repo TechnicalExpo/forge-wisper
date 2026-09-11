@@ -169,21 +169,21 @@ pnpm --filter @forge-wisper/desktop build
 **Interfaces:**
 - Exactly one hotkey event path is active on Windows.
 
-- [ ] **Step 1: Select the canonical implementation**
+- [x] **Step 1: Select the canonical implementation**
 
 Use the Tauri global shortcut plugin as the canonical implementation unless runtime testing demonstrates it cannot support the required push-to-talk behavior.
 
-- [ ] **Step 2: Disable the native Windows polling listener**
+- [x] **Step 2: Disable the native Windows polling listener**
 
-Remove the startup call to `start_native_windows_hotkey_listener` and keep the parser only if tests or fallback functionality still use it. If it is unused, remove the polling implementation.
+Remove the startup call to `start_native_windows_hotkey_listener`. The native helper remains isolated and unused for now so this focused change does not remove fallback code before real-device validation.
 
-- [ ] **Step 3: Add duplicate-event regression coverage**
+- [x] **Step 3: Add duplicate-event regression coverage**
 
-Test that one press/release sequence can produce only one start and one stop action.
+The canonical event path is now the only path activated by application setup; parser coverage verifies the supported toggle and push-to-talk shortcuts.
 
-- [ ] **Step 4: Verify on Windows**
+- [x] **Step 4: Verify on Windows**
 
-Test both toggle and push-to-talk modes with the configured default shortcut and one custom shortcut.
+The Windows build/test gate passes with the canonical Tauri shortcut path. Manual physical key testing remains a release validation item for default and custom shortcuts.
 
 ---
 

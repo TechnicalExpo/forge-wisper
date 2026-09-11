@@ -251,6 +251,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   const handleUpdateProvider = async (provider: string) => {
     if (!settings) return;
+    if (provider === "local-whisper") return;
     const defaultModel =
       provider === "local-whisper"
         ? (settings.model.startsWith("whisper-") ? "base" : settings.model)
@@ -639,14 +640,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleUpdateProvider("local-whisper")}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] font-medium transition-all cursor-pointer ${
-                    settings?.provider === "local-whisper"
-                      ? "bg-[var(--surface-primary)] border border-[var(--accent)] text-[var(--text-primary)] shadow-2xs"
-                      : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                  }`}
+                  disabled
+                  title="Local Whisper is coming soon"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] font-medium text-[var(--text-muted)] opacity-60 cursor-not-allowed"
                 >
-                  <span>Local Whisper</span>
+                  <span>Local Whisper (Soon)</span>
                 </button>
               </div>
             </div>

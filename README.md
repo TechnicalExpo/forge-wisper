@@ -6,7 +6,7 @@
 
 **Next-Generation Open-Source Voice-to-Structured-Text Desktop Application**
 
-**Current version:** `0.1.5`
+**Current version:** `0.1.6`
 
 *Speak naturally. Release. Receive clean, formatted, verified text directly at your cursor.*
 
@@ -66,7 +66,7 @@
 ## ✨ Key Features
 
 - **⚡ Blazing Fast Cloud Transcription (Groq Whisper)**: Sub-second audio processing with `whisper-large-v3-turbo` powered by Groq LPUs. API keys are safely stored in your native OS Keyring (**Windows Credential Vault & macOS Keychain**).
-- **🔒 Private & Offline Local Whisper**: Run Whisper directly on your machine (whisper.cpp / GGUF models) without any audio or text ever leaving your device.
+- **🔒 Local Whisper (planned)**: Offline model management is present, but the local inference runtime is not bundled in version `0.1.6`; Groq Cloud is the supported transcription provider until a real offline runtime is integrated.
 - **🍎 Native macOS Compatibility**: CoreAudio NaN-sanitized recording, Apple microphone permission integration (`Info.plist`), and universal binary packaging.
 - **🚀 Auto-Start on System Boot**: Automatically launches in the background on startup, instantly ready for your global hotkey.
 - **🧠 Intelligent Rule-Based Voice Cleaner**:
@@ -201,7 +201,7 @@ pnpm --filter @forge-wisper/desktop build
 
 - **No Cloud Audio Storage**: Audio recordings are processed in memory and discarded immediately after transcription.
 - **Secure Key Storage**: API credentials (such as Groq keys) are stored using native OS secret vaults (Windows Credential Manager, macOS Keychain, Linux Secret Service) via the `keyring` crate.
-- **Local-First Processing**: When using **Local Whisper**, 100% of speech recognition and text cleaning happens entirely on your local CPU/GPU with no internet access required.
+- **Local-First Processing**: Transcript cleanup, verification, and output are local. Groq Cloud mode sends recorded audio to Groq for transcription. Local Whisper inference is not available in this release.
 
 ---
 

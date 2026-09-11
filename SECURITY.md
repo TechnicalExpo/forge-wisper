@@ -34,7 +34,7 @@ We actively provide security patches and updates for the following versions:
 - Keys are never serialized into plaintext configuration files, SQLite tables, or error logs.
 
 ### 3. Local-First Processing
-- **Offline Guarantee**: When the Local Whisper provider is fully available and selected, speech recognition, text cleaning, formatting, and auto-pasting are designed to occur locally on your CPU/GPU. No cloud request is intended in local mode. The provider implementation must be verified before making a release claim.
+- **Offline Guarantee**: Local Whisper inference is not available in version `0.1.6` and is blocked in the UI/backend rather than returning fabricated text. Groq Cloud mode sends recorded audio to Groq for transcription; cleanup, verification, and output remain local.
 - **Local SQLite History**: All dictation history is stored in a local SQLite database (`history.db`) on your device.
 
 ---

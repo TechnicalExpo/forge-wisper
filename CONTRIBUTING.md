@@ -30,7 +30,7 @@ Forge Wisper is structured as a **Cargo Workspace & pnpm Monorepo**:
   - `crates/verification`: Entity safety verification engine comparing raw transcripts with cleaned output.
 - **`providers/`**: Speech recognition engine implementations:
   - `providers/groq`: Fast cloud transcription using Groq LPUs (`whisper-large-v3-turbo`).
-  - `providers/local-whisper`: Offline on-device transcription with `whisper-rs` (whisper.cpp).
+  - `providers/local-whisper`: Model discovery/download boundary for the planned offline runtime; local inference is currently feature-gated until a real whisper.cpp-compatible runtime is bundled.
 
 ---
 

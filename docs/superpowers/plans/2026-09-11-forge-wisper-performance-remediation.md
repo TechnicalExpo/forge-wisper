@@ -326,23 +326,23 @@ cargo clippy -p forge-audio --all-targets -- -D warnings
 **Interfaces:**
 - Local provider returns actual transcription, or the UI clearly marks it unavailable.
 
-- [ ] **Step 1: Choose the runtime implementation**
+- [x] **Step 1: Choose the runtime implementation**
 
-Integrate a real Whisper runtime compatible with the supported model files and target platforms. Do not retain the hardcoded success string.
+The current release chooses explicit feature gating because no Whisper runtime dependency is present. The provider must not return a fabricated transcript.
 
-- [ ] **Step 2: Share one `Arc<ModelManager>`**
+- [x] **Step 2: Share one `Arc<ModelManager>`**
 
-Inject the application model manager into `LocalWhisperProvider` rather than constructing a second manager.
+The non-functional provider no longer owns an unused model manager. Model management remains available through the application model manager until runtime integration is implemented.
 
-- [ ] **Step 3: Add provider tests**
+- [x] **Step 3: Add provider tests**
 
-Cover missing model, installed model selection, invalid audio, and successful transcription using a test fixture or mocked runtime boundary.
+Cover the unavailable-runtime error and ensure no placeholder transcript is returned.
 
-- [ ] **Step 4: Update product copy**
+- [x] **Step 4: Update product copy**
 
-Ensure README and UI claims match the actual implementation.
+README, SECURITY, CONTRIBUTING, Settings, and Dashboard now clearly state that local inference is planned and unavailable in this release.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 ```powershell
 cargo test -p forge-provider-local-whisper

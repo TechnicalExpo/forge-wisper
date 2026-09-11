@@ -98,6 +98,10 @@ impl AppSettings {
             if path.exists() {
                 if let Ok(content) = std::fs::read_to_string(&path) {
                     if let Ok(mut settings) = serde_json::from_str::<AppSettings>(&content) {
+                        if settings.provider == "local-whisper" {
+                            settings.provider = "groq".to_string();
+                            settings.model = "whisper-large-v3-turbo".to_string();
+                        }
                         if SecretStore::get_secret("groq_api_key").is_ok() && settings.provider == "mock" {
                             settings.provider = "groq".to_string();
                             settings.model = "whisper-large-v3-turbo".to_string();

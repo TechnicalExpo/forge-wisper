@@ -9,6 +9,15 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.12] - 2026-09-13
+
+### Fixed
+
+- Added the missing Launch at Startup control to Appearance & Privacy settings.
+- Replaced the hardcoded About version badge with the package version.
+- Delayed the main window's first show/focus until Tauri setup completes to
+  reduce startup white flashes while keeping the recorder window hidden.
+
 ## [0.3.11] - 2026-09-13
 
 ### Fixed

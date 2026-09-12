@@ -1,6 +1,6 @@
 {
   "productName": "Forge Wisper",
-  "version": "0.3.11",
+  "version": "0.3.12",
   "identifier": "com.alizazan.forgewisper",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -21,7 +21,7 @@
         "fullscreen": false,
         "decorations": true,
         "center": true,
-        "visible": true
+        "visible": false
       },
       {
         "label": "recorder",

@@ -1097,6 +1097,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
               Forge Wisper guarantees that raw audio recordings are processed completely in-memory and are never stored or cached to disk.
             </p>
           </div>
+
+          <div className="forge-card p-4 rounded-[8px] border border-[var(--border)] bg-[var(--surface-primary)] flex items-center justify-between gap-4">
+            <div>
+              <h4 className="text-[14px] font-semibold text-[var(--text-primary)]">Launch at Startup</h4>
+              <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-relaxed">
+                Start Forge Wisper when you sign in to Windows. The app respects
+                this preference and does not save microphone audio to disk.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={settings.launch_at_startup}
+              onClick={() => handleSave({ launch_at_startup: !settings.launch_at_startup })}
+              className={`relative shrink-0 w-11 h-6 rounded-full border transition-colors cursor-pointer ${
+                settings.launch_at_startup
+                  ? "bg-[var(--accent)] border-[var(--accent)]"
+                  : "bg-[var(--surface-elevated)] border-[var(--border)]"
+              }`}
+              title={settings.launch_at_startup ? "Disable launch at startup" : "Enable launch at startup"}
+            >
+              <span
+                className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+                  settings.launch_at_startup ? "translate-x-5" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
         </div>
       )}
 
@@ -1111,7 +1139,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
                   <div className="text-[16px] font-semibold text-[var(--text-primary)] flex items-center gap-2">
                     Forge Wisper
                     <span className="text-[10px] font-mono text-[var(--accent)] px-2 py-0.5 rounded-[4px] bg-[var(--accent-subtle)] border border-[var(--accent-border)]">
-                      v0.1.1-beta
+                      v{import.meta.env.PACKAGE_VERSION}
                     </span>
                   </div>
                   <p className="text-[13px] text-[var(--text-secondary)] mt-0.5">

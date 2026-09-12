@@ -48,11 +48,13 @@
 
 ### Startup And Recorder Window Polish
 
-- Compare upstream autostart/minimized/silent handling against current startup.
-- Preserve settings-patch/autostart rollback behavior, Windows hotkeys, and the
-  Vulkan launcher.
-- Adopt only isolated improvements that prevent startup/window flashes or avoid
-  synchronous startup work.
+- [x] Compare upstream autostart/minimized/silent handling against current startup.
+- [x] Preserve settings-patch/autostart rollback behavior, Windows hotkeys, and
+  the Vulkan launcher.
+- [x] Adopt the isolated fix that applies the persisted autostart preference
+  instead of forcing startup registration on every launch.
+- [ ] Verify Windows normal launch, autostart launch, minimized launch, and
+  recorder window visibility manually.
 
 ### Groq Request Review
 

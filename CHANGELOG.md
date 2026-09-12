@@ -9,6 +9,13 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.11] - 2026-09-13
+
+### Fixed
+
+- Startup now applies the persisted autostart preference instead of forcibly
+  enabling Windows startup on every launch.
+
 ## [0.3.10] - 2026-09-13
 
 ### Fixed

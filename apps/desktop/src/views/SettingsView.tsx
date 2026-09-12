@@ -8,6 +8,7 @@ import type {
   FormattingMode,
   RetentionPolicy,
   SettingsPatch,
+  LanguageCode,
 } from "../types";
 import { ForgeLogo } from "../components/ForgeLogo";
 import {
@@ -485,6 +486,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
               )}
             </div>
           )}
+
+          <div className="forge-card p-4 rounded-[8px] border border-[var(--border)] bg-[var(--surface-primary)]">
+            <label className="text-[13px] font-medium text-[var(--text-primary)] block mb-1.5">Recognition Language</label>
+            <p className="text-[12px] text-[var(--text-secondary)] mb-2">
+              Choose a spoken language or let the selected engine detect it automatically.
+            </p>
+            <select
+              value={settings.language}
+              onChange={(e) => handleSave({ language: e.target.value as LanguageCode })}
+              className="w-full px-3 py-2 bg-[var(--surface-primary)] border border-[var(--border)] rounded-[7px] text-[13px] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)] cursor-pointer"
+            >
+              {[
+                ["auto", "Auto Detect"], ["en", "English"], ["ur", "Urdu"], ["es", "Spanish"],
+                ["fr", "French"], ["de", "German"], ["it", "Italian"], ["pt", "Portuguese"],
+                ["zh", "Chinese"], ["ja", "Japanese"], ["ko", "Korean"], ["ar", "Arabic"],
+                ["hi", "Hindi"], ["ru", "Russian"], ["nl", "Dutch"], ["tr", "Turkish"], ["pl", "Polish"],
+              ].map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+            </select>
+          </div>
 
           {/* 2-Column Grid: Model Architecture & Microphone Device */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use directories::ProjectDirs;
 use forge_transcription::{
-    AudioData, ProviderCapabilities, ProviderError, Transcript, TranscriptionOptions,
+    normalize_language, AudioData, ProviderCapabilities, ProviderError, Transcript, TranscriptionOptions,
     TranscriptionProvider,
 };
 use reqwest::Client;
@@ -753,7 +753,7 @@ impl TranscriptionProvider for LocalWhisperProvider {
                 .find_model_file(&model_info.filename)
                 .ok_or_else(|| ProviderError::ModelError("Selected model file is missing".to_string()))?
         };
-        let language = options.language.clone().unwrap_or_else(|| "auto".to_string());
+        let language = normalize_language(options.language.as_deref());
         let inference_language = language.clone();
         let duration_ms = audio.duration_ms;
         let transcription_started = Instant::now();

@@ -5,7 +5,7 @@ use forge_provider_groq::GroqTranscriptionProvider;
 use forge_provider_local_whisper::{LocalWhisperProvider, ModelManager};
 use forge_security::SecretStore;
 use forge_storage::{HistoryRecord, RetentionPolicy, StorageEngine};
-use forge_transcription::{AudioData, ProviderError, TranscriptionOptions, TranscriptionProvider};
+use forge_transcription::{normalize_language, AudioData, ProviderError, TranscriptionOptions, TranscriptionProvider};
 use forge_verification::VerificationEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -36,6 +36,8 @@ pub struct AppSettings {
     pub model: String,               // e.g. "whisper-large-v3-turbo" or "base"
     #[serde(default = "default_compute_device")]
     pub compute_device: String,      // "cpu" or "gpu"
+    #[serde(default = "default_language")]
+    pub language: String,
     pub microphone: Option<String>,
     pub formatting_mode: FormattingMode,
     pub hotkey: String,              // "Control+Space"
@@ -55,6 +57,7 @@ pub struct SettingsPatch {
     pub provider: Option<String>,
     pub model: Option<String>,
     pub compute_device: Option<String>,
+    pub language: Option<String>,
     pub microphone: Option<Option<String>>,
     pub formatting_mode: Option<FormattingMode>,
     pub hotkey: Option<String>,
@@ -85,6 +88,7 @@ impl AppSettings {
         if let Some(value) = patch.provider { next.provider = value; }
         if let Some(value) = patch.model { next.model = value; }
         if let Some(value) = patch.compute_device { next.compute_device = value; }
+        if let Some(value) = patch.language { next.language = normalize_language(Some(&value)); }
         if let Some(value) = patch.microphone { next.microphone = value; }
         if let Some(value) = patch.formatting_mode { next.formatting_mode = value; }
         if let Some(value) = patch.hotkey { next.hotkey = value; }
@@ -106,6 +110,10 @@ fn default_compute_device() -> String {
     "cpu".to_string()
 }
 
+fn default_language() -> String {
+    "auto".to_string()
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         let defaults = CleanupOptions::default();
@@ -113,6 +121,7 @@ impl Default for AppSettings {
             provider: "groq".to_string(),
             model: "whisper-large-v3-turbo".to_string(),
             compute_device: default_compute_device(),
+            language: default_language(),
             microphone: None,
             formatting_mode: FormattingMode::Smart,
             hotkey: "Control+Space".to_string(),
@@ -364,9 +373,9 @@ impl PipelineState {
             elapsed_ms = encode_started.elapsed().as_millis() as u64,
         );
 
-        let (provider_name, model_name, compute_device, fmt_mode, dict, snippets, retention) = {
+        let (provider_name, model_name, compute_device, language, fmt_mode, dict, snippets, retention) = {
             let s = self.settings.lock().unwrap();
-            (s.provider.clone(), s.model.clone(), s.compute_device.clone(), s.formatting_mode, s.dictionary.clone(), s.snippets.clone(), s.retention_policy)
+            (s.provider.clone(), s.model.clone(), s.compute_device.clone(), normalize_language(Some(&s.language)), s.formatting_mode, s.dictionary.clone(), s.snippets.clone(), s.retention_policy)
         };
 
         let audio_data = AudioData::new(wav_bytes, 16000, 1, start_time.elapsed().as_millis() as u64);
@@ -380,6 +389,7 @@ impl PipelineState {
                     .transcribe(audio_data, TranscriptionOptions {
                         model: Some(model_name.clone()),
                         compute_device: Some(compute_device.clone()),
+                        language: Some(language.clone()),
                         ..Default::default()
                     })
                     .await
@@ -389,6 +399,7 @@ impl PipelineState {
                 self.groq_provider
                     .transcribe(audio_data, TranscriptionOptions {
                         model: Some(model_name.clone()),
+                        language: Some(language.clone()),
                         ..Default::default()
                     })
                     .await

@@ -30,6 +30,35 @@ pub struct TranscriptionOptions {
     pub prompt: Option<String>,
 }
 
+pub const SUPPORTED_LANGUAGES: &[(&str, &str)] = &[
+    ("auto", "Auto Detect"),
+    ("en", "English"),
+    ("ur", "Urdu"),
+    ("es", "Spanish"),
+    ("fr", "French"),
+    ("de", "German"),
+    ("it", "Italian"),
+    ("pt", "Portuguese"),
+    ("zh", "Chinese"),
+    ("ja", "Japanese"),
+    ("ko", "Korean"),
+    ("ar", "Arabic"),
+    ("hi", "Hindi"),
+    ("ru", "Russian"),
+    ("nl", "Dutch"),
+    ("tr", "Turkish"),
+    ("pl", "Polish"),
+];
+
+pub fn normalize_language(language: Option<&str>) -> String {
+    let code = language.unwrap_or("auto").trim().to_ascii_lowercase();
+    if SUPPORTED_LANGUAGES.iter().any(|(supported, _)| *supported == code) {
+        code
+    } else {
+        "auto".to_string()
+    }
+}
+
 impl Default for TranscriptionOptions {
     fn default() -> Self {
         Self {
@@ -39,6 +68,18 @@ impl Default for TranscriptionOptions {
             temperature: Some(0.0),
             prompt: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_language;
+
+    #[test]
+    fn language_codes_are_normalized_and_validated() {
+        assert_eq!(normalize_language(Some(" UR ")), "ur");
+        assert_eq!(normalize_language(Some("unknown")), "auto");
+        assert_eq!(normalize_language(None), "auto");
     }
 }
 

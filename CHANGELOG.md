@@ -9,6 +9,19 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.8] - 2026-09-12
+
+### Added
+
+- Added validated recognition-language selection with Auto Detect as the default.
+- Propagated explicit language selection through Local Whisper and Groq while
+  preserving CPU/GPU backend selection and model context caching.
+
+### Deferred
+
+- Real-time partial transcript cursor injection remains intentionally deferred;
+  future streaming must be opt-in and preserve the current safe paste path.
+
 ## [0.3.7] - 2026-09-12
 
 ### Tests

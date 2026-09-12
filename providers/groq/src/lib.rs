@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use forge_transcription::{
-    AudioData, ProviderCapabilities, ProviderError, Transcript, TranscriptionOptions,
+    normalize_language, AudioData, ProviderCapabilities, ProviderError, Transcript, TranscriptionOptions,
     TranscriptionProvider,
 };
 use reqwest::multipart::{Form, Part};
@@ -133,16 +133,14 @@ impl TranscriptionProvider for GroqTranscriptionProvider {
             .text("model", model.clone())
             .text("response_format", "verbose_json");
 
-        if let Some(lang) = options.language {
-            if lang != "auto" {
-                form = form.text("language", lang);
-            }
+        let language = normalize_language(options.language.as_deref());
+        if language != "auto" {
+            form = form.text("language", language);
         }
 
-        let prompt = options
-            .prompt
-            .unwrap_or_else(|| "Accurate speech dictation transcription.".to_string());
-        form = form.text("prompt", prompt);
+        if let Some(prompt) = options.prompt.filter(|prompt| !prompt.trim().is_empty()) {
+            form = form.text("prompt", prompt);
+        }
 
         let temp = options.temperature.unwrap_or(0.0);
         form = form.text("temperature", temp.to_string());

@@ -36,6 +36,7 @@ import {
   Radio,
   RotateCcw,
   ExternalLink,
+  ChevronDown,
 } from "lucide-react";
 
 interface SettingsViewProps {
@@ -84,6 +85,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
     reason: string;
   } | null>(null);
   const [micLevel, setMicLevel] = useState(0);
+  const [retentionDropdownOpen, setRetentionDropdownOpen] = useState(false);
   const stopMicPollingRef = useRef<(() => void) | null>(null);
 
   const toggleMicTest = async () => {
@@ -1082,17 +1084,46 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
 
             <div>
               <label className="text-[11px] text-[var(--text-muted)] block mb-1 font-mono">Transcript Retention</label>
-              <select
-                value={settings.retention_policy}
-                onChange={(e) => handleSave({ ...settings, retention_policy: e.target.value as RetentionPolicy })}
-                className="w-full px-3 py-2 bg-[var(--surface-primary)] border border-[var(--border)] rounded-[7px] text-[13px] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)] cursor-pointer"
-              >
-                <option value="Days30">Keep Transcripts for 30 Days (Default)</option>
-                <option value="Days7">Keep Transcripts for 7 Days</option>
-                <option value="Forever">Keep Transcripts Forever (Local SQLite)</option>
-                <option value="Off">Do Not Save Transcripts (Incognito Mode)</option>
-              </select>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setRetentionDropdownOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-3 py-2 bg-[var(--surface-primary)] border border-[var(--border)] rounded-[7px] text-[13px] text-[var(--text-primary)] font-mono cursor-pointer hover:border-[var(--accent)] transition-colors"
+                >
+                  <span>
+                    {settings.retention_policy === "Days30" ? "Keep Transcripts for 30 Days (Default)" :
+                     settings.retention_policy === "Days7" ? "Keep Transcripts for 7 Days" :
+                     settings.retention_policy === "Forever" ? "Keep Transcripts Forever (Local SQLite)" :
+                     "Do Not Save Transcripts (Incognito Mode)"}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${retentionDropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+                {retentionDropdownOpen && (
+                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-[7px] shadow-lg overflow-hidden">
+                    {([
+                      ["Days30", "Keep Transcripts for 30 Days (Default)"],
+                      ["Days7", "Keep Transcripts for 7 Days"],
+                      ["Forever", "Keep Transcripts Forever (Local SQLite)"],
+                      ["Off", "Do Not Save Transcripts (Incognito Mode)"],
+                    ] as [string, string][]).map(([val, label]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => { handleSave({ ...settings, retention_policy: val as RetentionPolicy }); setRetentionDropdownOpen(false); }}
+                        className={`w-full text-left px-3 py-2 text-[13px] font-mono cursor-pointer transition-colors ${
+                          settings.retention_policy === val
+                            ? "bg-[var(--accent)]/10 text-[var(--accent)]"
+                            : "text-[var(--text-primary)] hover:bg-[var(--surface-primary)]"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+
             <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
               Forge Wisper guarantees that raw audio recordings are processed completely in-memory and are never stored or cached to disk.
             </p>
@@ -1111,15 +1142,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
               role="switch"
               aria-checked={settings.launch_at_startup}
               onClick={() => handleSave({ launch_at_startup: !settings.launch_at_startup })}
-              className={`relative shrink-0 w-12 h-6 rounded-full border transition-colors cursor-pointer ${
+              className={`relative shrink-0 w-12 h-6 rounded-full transition-colors cursor-pointer ${
                 settings.launch_at_startup
-                  ? "bg-[var(--accent)] border-[var(--accent)]"
-                  : "bg-[var(--surface-elevated)] border-[var(--border)]"
+                  ? "bg-[var(--accent)]"
+                  : "bg-[var(--surface-elevated)]"
               }`}
               title={settings.launch_at_startup ? "Disable launch at startup" : "Enable launch at startup"}
             >
               <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+                className={`absolute top-1/2 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm -translate-y-1/2 transition-transform ${
                   settings.launch_at_startup ? "translate-x-6" : "translate-x-0"
                 }`}
               />

@@ -1111,7 +1111,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
               role="switch"
               aria-checked={settings.launch_at_startup}
               onClick={() => handleSave({ launch_at_startup: !settings.launch_at_startup })}
-              className={`relative shrink-0 w-11 h-6 rounded-full border transition-colors cursor-pointer ${
+              className={`relative shrink-0 w-12 h-6 rounded-full border transition-colors cursor-pointer ${
                 settings.launch_at_startup
                   ? "bg-[var(--accent)] border-[var(--accent)]"
                   : "bg-[var(--surface-elevated)] border-[var(--border)]"
@@ -1119,7 +1119,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
               title={settings.launch_at_startup ? "Disable launch at startup" : "Enable launch at startup"}
             >
               <span
-                className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
                   settings.launch_at_startup ? "translate-x-5" : "translate-x-0.5"
                 }`}
               />

@@ -7,6 +7,7 @@ import { DictionaryView } from "./views/DictionaryView";
 import { FloatingRecorder } from "./views/FloatingRecorder";
 import { ForgeLogo } from "./components/ForgeLogo";
 import { api } from "./lib/tauri";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { setAppSettings, startAppStore, useAppStore } from "./state/appStore";
 import {
   LayoutDashboard,
@@ -53,6 +54,12 @@ export const App: React.FC = () => {
     }
 
     const storeCleanup = startAppStore();
+    void storeCleanup.then(async () => {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const window = getCurrentWindow();
+      await window.show();
+      await window.setFocus();
+    });
 
     const unlistenToast = api.onToast((msg) => {
       setToastMessage(msg);

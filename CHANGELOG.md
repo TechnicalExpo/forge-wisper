@@ -9,6 +9,14 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.13] - 2026-09-13
+
+### Fixed
+
+- Delayed main-window show/focus until the frontend first paint to reduce the
+  startup white flash.
+- Corrected the Launch at Startup toggle track and thumb geometry.
+
 ## [0.3.12] - 2026-09-13
 
 ### Fixed

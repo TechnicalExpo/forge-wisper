@@ -24,8 +24,11 @@ $env:Path = "C:\Program Files\CMake\bin;C:\Program Files\LLVM\bin;$env:USERPROFI
 ```
 
 The Windows launcher automatically discovers the newest Vulkan SDK under
-`C:\VulkanSDK`, validates `glslc.exe`, and uses `C:\t` as a
-short Cargo target directory to avoid MSBuild's nested Vulkan shader path limit.
+`C:\VulkanSDK`, validates `glslc.exe`, and uses `C:\t` as a short Cargo target
+directory. This external short path is intentional: a `subst` drive pointing
+at a deep repository checkout is still too long for MSBuild's nested Vulkan
+shader-generator paths. `C:\t` contains generated build output only and can be
+deleted safely when no Cargo process is running.
 
 For development, the repository provides a repeatable launcher that performs this setup and loads the MSVC environment automatically:
 

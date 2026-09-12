@@ -9,6 +9,15 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.10] - 2026-09-13
+
+### Fixed
+
+- Routed the normal `pnpm tauri:dev` command through the platform-specific
+  development environment so Windows loads the existing Vulkan/MSVC launcher.
+- Preserved the explicit `pnpm tauri:dev:windows` command and macOS/Linux direct
+  Tauri development flow.
+
 ## [0.3.9] - 2026-09-12
 
 ### Added

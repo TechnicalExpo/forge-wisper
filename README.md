@@ -165,9 +165,30 @@ forge-wisper/
    ```
 
 3. **Run in Desktop Development Mode**:
-   ```bash
-   pnpm tauri:dev
+    ```bash
+    pnpm tauri:dev
+    ```
+
+   `pnpm tauri:dev` routes to the platform-specific development environment.
+   On Windows it uses the native Local Whisper launcher so MSVC, LLVM/libclang,
+   CMake, Vulkan SDK, and the short Cargo target directory are configured
+   automatically. The explicit Windows command remains available:
+
+   ```powershell
+   pnpm tauri:dev:windows
    ```
+
+   Windows GPU development prerequisites:
+
+   ```powershell
+   winget install Kitware.CMake
+   winget install LLVM.LLVM
+   winget install KhronosGroup.VulkanSDK
+   ```
+
+   Visual Studio Build Tools 2022 with the C++ workload and Windows SDK are
+   also required. The launcher discovers installed versions; do not copy these
+   toolchains into the repository.
 
 4. **Build Production Installer / Packages**:
    ```bash

@@ -20,9 +20,6 @@ $cargoTargetDir = "C:\t"
 if (!(Test-Path -LiteralPath $vulkanCompiler)) {
   throw "Vulkan shader compiler not found: $vulkanCompiler"
 }
-if (!(Test-Path -LiteralPath $cargoTargetDir)) {
-  New-Item -ItemType Directory -Path $cargoTargetDir | Out-Null
-}
 
 $env:LIBCLANG_PATH = $llvmBin
 $env:VULKAN_SDK = $vulkanSdk

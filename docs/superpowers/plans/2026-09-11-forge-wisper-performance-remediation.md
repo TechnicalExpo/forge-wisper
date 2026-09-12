@@ -450,7 +450,7 @@ Use the same input in the dictionary sandbox and a cleanup unit test; expected o
 - Modify: `docs/performance-audit.md` with measured results.
 - Modify: `docs/superpowers/plans/2026-09-11-forge-wisper-performance-remediation.md` checkboxes.
 
-- [ ] **Step 1: Run complete checks**
+- [x] **Step 1: Run complete checks**
 
 ```powershell
 cargo test --workspace
@@ -466,10 +466,15 @@ Test settings changes, theme changes, microphone changes, hotkey changes, toggle
 
 Compare settings click-to-visible-update latency, mic-level IPC rate, state-event reload count, and recording pipeline timings.
 
-- [ ] **Step 4: Review the diff and create a feature branch**
+- [x] **Step 4: Review the diff and create a feature branch**
 
 Create the branch only after the documentation and baseline are reviewed:
 
 ```powershell
 git status --short
 ```
+
+> Automated verification is complete and the audit has been updated to reflect
+> the implemented remediations. Physical Windows scenario validation and
+> before/after profiling remain release-validation work because they require
+> interactive microphone, hotkey, GPU, paste, and timing observation.

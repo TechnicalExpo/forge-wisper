@@ -9,6 +9,15 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.5] - 2026-09-12
+
+### Documentation
+
+- Updated the performance audit with the completed settings, state, audio,
+  storage, dictionary, and Local Whisper remediation status.
+- Recorded the remaining physical Windows scenario and before/after profiling
+  work as release-validation items instead of claiming unmeasured results.
+
 ## [0.3.4] - 2026-09-12
 
 ### Fixed

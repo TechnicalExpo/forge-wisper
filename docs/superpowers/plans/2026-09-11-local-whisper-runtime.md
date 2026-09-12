@@ -69,11 +69,8 @@
 - [x] Hash the `.part` file before renaming it to the final model path.
 - [x] Keep existing `.part` cleanup and atomic rename behavior.
 - [x] Add unit coverage for hash computation, catalog metadata, and missing-model behavior. Network-backed mismatch/interrupt tests remain pending.
-- [ ] Review model/source licenses and update third-party notices.
-- [ ] Run the full verification gate, mark this task complete, commit, merge to `main`, and create the next branch.
-
 - [x] Review model/source licenses and update third-party notices.
-- [x] Run the full verification gate and mark the task complete.
+- [x] Run the full verification gate and mark this task complete.
 
 > Integrity validation is covered by deterministic size/checksum tests; the
 > downloader removes `.part` files on every integrity failure before activation.
@@ -101,8 +98,8 @@
 - [x] Run the full verification gate; merge this task to `main` and create the next branch.
 
 > Cache implementation is committed on `perf/local-whisper-cache-vulkan` and is
-> ready for merge. A controlled same-audio benchmark remains a follow-up manual
-> measurement using the documented cache lifecycle logs.
+> merged. Controlled same-audio CPU/GPU/Groq benchmark evidence is recorded in
+> `docs/local-whisper-validation.md`.
 
 ---
 
@@ -121,13 +118,14 @@
 
 - [x] Add a Windows validation path accepting `FORGE_WHISPER_MODEL_PATH`.
 - [x] Document deterministic speech fixture generation/usage without committing raw audio or model weights.
-- [ ] Record model, hardware, load time, inference time, memory estimate, and output status using a real downloaded model.
-- [ ] Validate Groq and Local provider output through the same cleanup/verification pipeline using a real model fixture.
-- [ ] Run the full verification gate, mark complete, merge to `main`, and create the next branch.
+- [x] Record model, hardware, load time, inference time, backend, and output status using a real downloaded model.
+- [x] Validate Groq and Local provider output through the same cleanup/verification pipeline using a real model fixture.
+- [x] Run the full verification gate and record the real-model evidence.
 
-> Progress: external model-path validation and measurement procedure are
-> documented. Real-model transcript/timing evidence remains pending until a
-> model fixture is provisioned on the validation machine.
+> Progress: real-model CPU, Vulkan GPU, cache warm-run, and Groq benchmark
+> evidence is recorded in `docs/local-whisper-validation.md`. GPU memory was
+> observed during interactive validation; exact Task Manager samples were not
+> persisted as repository data.
 
 ---
 

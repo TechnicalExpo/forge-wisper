@@ -2,6 +2,12 @@
 
 This validation uses an externally downloaded model. Model weights must not be committed to the repository.
 
+The application does not persist raw microphone audio. Audio is encoded in
+memory, passed through transcription/cleanup/verification/output, and then
+discarded. History stores transcript text and metadata only: provider, model,
+duration, timestamp, and verification status. This means a historical
+transcription cannot be reused as an audio benchmark fixture.
+
 ## Prerequisites
 
 - Windows MSVC Build Tools
@@ -114,6 +120,38 @@ For a controlled cache measurement, use the same model, compute device, and
 10-30 second WAV input for three runs. Record the first run as cold-start time,
 then compare the second and third warm runs. CPU and Vulkan contexts are cached
 separately, and changing the selected model invalidates the cached context.
+
+## Recorded Benchmark
+
+On the validation machine, `record.wav` was normalized in memory from stereo
+48 kHz PCM16 to the required mono 16 kHz PCM16 format. The source file remained
+local and ignored by Git. The same normalized audio was sent to Local Whisper
+CPU, Local Whisper Vulkan GPU, and Groq.
+
+```text
+Source duration: 125.013 seconds
+Model: ggml-base.bin
+Local CPU cold run: 28,115 ms
+Local CPU warm run: 22,298 ms
+Local GPU cold run: 38,260 ms
+Local GPU warm run: 4,114 ms
+Groq run: 2,422 ms
+```
+
+Backend evidence:
+
+```text
+CPU: whisper_init_with_params_no_state: use gpu = 0
+GPU: whisper_init_with_params_no_state: use gpu = 1
+GPU: whisper_backend_init_gpu: using Vulkan1 backend
+```
+
+The GPU cold run includes Vulkan/model initialization. The warm GPU run reused
+the loaded context and was substantially faster than the warm CPU run. Groq was
+fastest for this run but sent the audio to the configured cloud provider. The
+Local CPU/GPU and Groq transcripts all completed successfully through the
+benchmark cleanup path; transcription wording varied between providers, so
+timing and backend selection should not be interpreted as an accuracy ranking.
 
 ## Automated Fixture Work
 

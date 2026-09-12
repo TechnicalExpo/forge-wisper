@@ -1,5 +1,7 @@
 # Language Switcher And Safe Upstream Adoptions
 
+**Source:** `zazanali/forge-wisper:main` comparison against the TechnicalExpo fork.
+
 **Goal:** Add validated language selection to Forge Wisper without breaking the existing CPU/GPU Local Whisper runtime, settings patch flow, or Groq provider.
 
 ## Scope
@@ -22,6 +24,57 @@
 - Dynamic snippet editing as a separate focused task.
 - Groq request cleanup as a separate focused task.
 - Startup/window polish as a separate focused task.
+
+## Upstream Review Status
+
+### Completed
+
+- Validated language support is implemented and merged.
+- Dynamic snippet editing is implemented and merged.
+- Groq safely omits `auto` language and empty prompts while preserving the
+  current response format.
+- Normal Windows `pnpm tauri:dev` routing now uses the existing Windows launcher.
+
+### Rejected
+
+- Global verification-threshold weakening is rejected because it would weaken
+  number, URL, negation, hallucination, and safe-paste protections.
+- Upstream per-character cursor injection and blind backspace correction are not
+  adopted.
+- Upstream whole-buffer audio snapshots are not adopted because they conflict
+  with the audio ownership and Local Whisper cache optimizations.
+
+## Remaining Tasks
+
+### Startup And Recorder Window Polish
+
+- Compare upstream autostart/minimized/silent handling against current startup.
+- Preserve settings-patch/autostart rollback behavior, Windows hotkeys, and the
+  Vulkan launcher.
+- Adopt only isolated improvements that prevent startup/window flashes or avoid
+  synchronous startup work.
+
+### Groq Request Review
+
+- Add focused provider tests for omitted `auto` language and empty prompts.
+- Review response-format compatibility before changing `verbose_json`.
+- Keep API keys, raw audio, and transcript content out of logs.
+
+### Release Documentation Cleanup
+
+- Review upstream README/download presentation.
+- Keep release asset names dynamic; do not copy hardcoded `0.1.2` names.
+- Preserve current version/changelog policy and Local Whisper privacy docs.
+
+## Compatibility Rules
+
+- Never cherry-pick upstream commits wholesale; the upstream branch is based on
+  an older architecture and is behind the current implementation.
+- Do not overwrite Local Whisper CPU/Vulkan/GPU code or model-context caching.
+- Do not replace targeted settings patches with full settings writes.
+- Do not reintroduce duplicate hotkey listeners or overlapping mic polling.
+- Do not replace database-backed dashboard/history APIs with renderer-side loads.
+- Do not commit model weights, raw audio, API keys, or benchmark transcript data.
 
 ## Design
 
@@ -51,3 +104,11 @@
   cancellation before implementation.
 - Dynamic snippet editing, Groq request cleanup, and startup/window polish are
   separate focused tasks.
+
+## Current Status
+
+- Merged release: `0.3.10`.
+- Language switcher: complete.
+- Dynamic snippet editing: complete.
+- Normal Windows `pnpm tauri:dev`: routed through the existing Windows launcher.
+- Next recommended task: startup and recorder-window polish review.

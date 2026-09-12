@@ -1,6 +1,6 @@
 {
   "name": "forge-wisper-monorepo",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "private": true,
   "description": "Open-Source AI Voice-to-Text and Smart Writing Desktop Application",
   "scripts": {

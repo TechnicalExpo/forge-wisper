@@ -121,4 +121,6 @@ Implemented and validated on Windows with an NVIDIA RTX 3070 Laptop GPU.
 - [x] Confirm transcript insertion and verification succeeded in both modes.
 - [x] Run `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, and `pnpm --filter @forge-wisper/desktop build`.
 - [x] Bump synchronized versions to `0.3.0` and update the changelog.
-- [ ] Record a controlled same-audio CPU/GPU benchmark with three warm runs per mode.
+- [x] Record a controlled same-audio CPU/GPU benchmark with cold and warm runs.
+
+> Benchmark evidence is recorded in `docs/local-whisper-validation.md`.

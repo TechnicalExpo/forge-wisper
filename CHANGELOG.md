@@ -9,6 +9,15 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.6] - 2026-09-12
+
+### Tests
+
+- Recorded a same-audio Local Whisper CPU/GPU and Groq benchmark using the
+  externally supplied WAV fixture.
+- Documented cold and warm model timings, Vulkan backend evidence, and cloud
+  comparison/privacy impact without committing audio or transcript fixtures.
+
 ## [0.3.5] - 2026-09-12
 
 ### Documentation

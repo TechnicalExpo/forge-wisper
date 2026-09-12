@@ -101,8 +101,8 @@
 - [x] Run the full verification gate; merge this task to `main` and create the next branch.
 
 > Cache implementation is committed on `perf/local-whisper-cache-vulkan` and is
-> ready for merge. A controlled same-audio benchmark remains a follow-up manual
-> measurement using the documented cache lifecycle logs.
+> merged. Controlled same-audio CPU/GPU/Groq benchmark evidence is recorded in
+> `docs/local-whisper-validation.md`.
 
 ---
 

@@ -9,6 +9,13 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.14] - 2026-09-13
+
+### Fixed
+
+- Corrected Launch at Startup toggle thumb centering and equal track spacing.
+- Added open/closed chevron states and balanced spacing to Dashboard dropdowns.
+
 ## [0.3.13] - 2026-09-13
 
 ### Fixed

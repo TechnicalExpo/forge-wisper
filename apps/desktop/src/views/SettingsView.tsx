@@ -1120,7 +1120,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
             >
               <span
                 className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
-                  settings.launch_at_startup ? "translate-x-5" : "translate-x-0.5"
+                  settings.launch_at_startup ? "translate-x-6" : "translate-x-0"
                 }`}
               />
             </button>

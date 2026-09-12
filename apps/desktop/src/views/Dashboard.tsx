@@ -18,6 +18,7 @@ import {
   FileText,
   MoreVertical,
   ChevronDown,
+  ChevronUp,
   Trash2,
 } from "lucide-react";
 import { formatKeyForDisplay } from "./SettingsView";
@@ -447,10 +448,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       e.stopPropagation();
                       setShowFormatDropdown(!showFormatDropdown);
                     }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] bg-[var(--surface-elevated)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[12px] text-[var(--text-primary)] font-medium transition-colors cursor-pointer"
+                     className="inline-flex items-center justify-between gap-2 px-2.5 py-1 rounded-[5px] bg-[var(--surface-elevated)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[12px] text-[var(--text-primary)] font-medium transition-colors cursor-pointer"
                   >
                     <span>Format</span>
-                    <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />
+                     {showFormatDropdown ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)]" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />}
                   </button>
 
                   {showFormatDropdown && (
@@ -524,7 +525,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] bg-[var(--surface-elevated)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition-colors cursor-pointer"
               >
                 <span>{timeframe === "Today" ? "Today" : timeframe === "Week" ? "This Week" : "All Time"}</span>
-                <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />
+                 {showTimeframeDropdown ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)]" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />}
               </button>
 
               {showTimeframeDropdown && (
@@ -638,7 +639,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] bg-[var(--surface-elevated)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[12px] text-[var(--text-primary)] font-medium transition-colors cursor-pointer"
                 >
                   <span>{settings?.formatting_mode === "Smart" ? "Smart Cleanup" : settings?.formatting_mode || "Smart Cleanup"}</span>
-                  <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />
+                   {showModeDropdown ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)]" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />}
                 </button>
 
                 {showModeDropdown && (
@@ -675,7 +676,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   <span className="truncate">
                     {settings?.microphone || "Default Microphone"}
                   </span>
-                  <ChevronDown className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+                   {showMicDropdown ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)] shrink-0" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)] shrink-0" />}
                 </button>
 
                 {showMicDropdown && (

@@ -97,8 +97,13 @@ pub fn run() {
             #[cfg(target_os = "windows")]
             start_native_windows_hotkey_listener(app.handle().clone());
             
-            // Automatically register in Windows startup registry so the app always starts on PC boot
-            let _ = set_autostart(true);
+            // Apply the user's persisted startup preference without forcing it on.
+            let launch_at_startup = {
+                let pipeline_state = app.state::<PipelineState>();
+                let settings = pipeline_state.settings.lock().unwrap();
+                settings.launch_at_startup
+            };
+            let _ = set_autostart(launch_at_startup);
 
             // Setup System Tray icon
             let show_i = MenuItem::with_id(app, "show", "Open Forge Wisper", true, None::<&str>)?;

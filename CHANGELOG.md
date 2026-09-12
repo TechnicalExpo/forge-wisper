@@ -9,6 +9,13 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.4] - 2026-09-12
+
+### Fixed
+
+- Dictionary preview now uses the same Rust cleanup pipeline as real dictation.
+- Added debounced preview requests and stale-response protection.
+
 ## [0.3.3] - 2026-09-12
 
 ### Fixed

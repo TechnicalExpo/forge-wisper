@@ -148,6 +148,7 @@ pub fn run() {
             stop_recording,
             cancel_recording,
             get_settings,
+            preview_cleanup,
             update_settings,
             get_audio_devices,
             get_groq_api_key_status,

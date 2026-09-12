@@ -150,33 +150,29 @@ export const DictionaryView: React.FC = () => {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  // Live Test Sandbox Simulation
+  // Live preview uses the same Rust cleanup pipeline as real dictation.
   useEffect(() => {
     if (!settings || !testInput) {
       setTestOutput("");
       return;
     }
-    let res = testInput;
-
-    // 1. Expand Snippets
-    if (settings.snippets) {
-      for (const [trigger, val] of Object.entries(settings.snippets)) {
-        if (!trigger.trim()) continue;
-        const re = new RegExp(`\\b${trigger.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi");
-        res = res.replace(re, val);
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const output = await api.previewCleanup(testInput);
+        if (active) setTestOutput(output);
+      } catch (error) {
+        if (active) {
+          console.error("Failed to preview cleanup:", error);
+          setTestOutput("");
+        }
       }
-    }
+    }, 250);
 
-    // 2. Apply Word Dictionary
-    if (settings.dictionary) {
-      for (const [spoken, pref] of Object.entries(settings.dictionary)) {
-        if (!spoken.trim()) continue;
-        const re = new RegExp(`\\b${spoken.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi");
-        res = res.replace(re, pref);
-      }
-    }
-
-    setTestOutput(res);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [testInput, settings]);
 
   if (!settings) {

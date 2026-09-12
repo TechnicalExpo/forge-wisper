@@ -56,6 +56,30 @@ pub fn get_settings(state: State<'_, PipelineState>) -> AppSettings {
 }
 
 #[tauri::command]
+pub fn preview_cleanup(
+    text: String,
+    state: State<'_, PipelineState>,
+) -> Result<String, String> {
+    let settings = state.settings.lock().unwrap().clone();
+    let transcript = Transcript {
+        text,
+        language: "auto".to_string(),
+        provider: "preview".to_string(),
+        model: "preview".to_string(),
+        duration_ms: 0,
+        confidence: None,
+    };
+    let options = CleanupOptions {
+        mode: settings.formatting_mode,
+        dictionary: settings.dictionary,
+        snippets: settings.snippets,
+    };
+    RuleBasedCleaner::clean(&transcript, &options)
+        .map(|cleaned| cleaned.cleaned_text)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub fn update_settings(
     app: AppHandle,
     patch: SettingsPatch,

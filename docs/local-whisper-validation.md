@@ -2,6 +2,12 @@
 
 This validation uses an externally downloaded model. Model weights must not be committed to the repository.
 
+The application does not persist raw microphone audio. Audio is encoded in
+memory, passed through transcription/cleanup/verification/output, and then
+discarded. History stores transcript text and metadata only: provider, model,
+duration, timestamp, and verification status. This means a historical
+transcription cannot be reused as an audio benchmark fixture.
+
 ## Prerequisites
 
 - Windows MSVC Build Tools

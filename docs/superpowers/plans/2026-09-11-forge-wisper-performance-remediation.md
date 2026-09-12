@@ -458,13 +458,21 @@ cargo clippy --workspace --all-targets -- -D warnings
 pnpm --filter @forge-wisper/desktop build
 ```
 
-- [ ] **Step 2: Run manual Windows scenarios**
+- [x] **Step 2: Run manual Windows scenarios**
 
-Test settings changes, theme changes, microphone changes, hotkey changes, toggle recording, push-to-talk, model download, dictionary preview, history search, and paste output.
+Verified manually: settings/theme/provider changes, microphone selection,
+physical hotkeys, push-to-talk, toggle recording, model download/delete/use,
+history pagination/search, and clipboard/paste output. Dictionary preview
+parity remains covered by the backend cleanup command and automated cleanup
+tests; an additional interactive preview check is still recommended.
 
 - [ ] **Step 3: Capture before/after timings**
 
 Compare settings click-to-visible-update latency, mic-level IPC rate, state-event reload count, and recording pipeline timings.
+
+> Same-audio CPU/GPU/Groq timing comparison remains pending. Raw audio is not
+> stored in history, so a new identical WAV fixture must be recorded or supplied
+> externally before that comparison can be performed.
 
 - [x] **Step 4: Review the diff and create a feature branch**
 

@@ -9,6 +9,16 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.3] - 2026-09-12
+
+### Fixed
+
+- Enabled Local Whisper selection directly from the Dashboard engine selector.
+- Kept the Dashboard dictation button synchronized with hotkey-triggered
+  recording and processing state changes without requiring navigation.
+- Refreshed the latest dictation and dashboard metrics after terminal pipeline
+  state transitions.
+
 ## [0.3.2] - 2026-09-12
 
 ### Performance

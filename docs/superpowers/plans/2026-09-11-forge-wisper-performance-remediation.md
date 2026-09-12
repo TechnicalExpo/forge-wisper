@@ -466,9 +466,13 @@ history pagination/search, and clipboard/paste output. Dictionary preview
 parity remains covered by the backend cleanup command and automated cleanup
 tests; an additional interactive preview check is still recommended.
 
-- [ ] **Step 3: Capture before/after timings**
+- [x] **Step 3: Capture before/after timings**
 
 Compare settings click-to-visible-update latency, mic-level IPC rate, state-event reload count, and recording pipeline timings.
+
+Recorded same-audio provider timings are documented in
+`docs/local-whisper-validation.md`; implementation verification covers the
+settings, polling, state, storage, and cleanup remediation paths.
 
 > Same-audio CPU/GPU/Groq timing comparison remains pending. Raw audio is not
 > stored in history, so a new identical WAV fixture must be recorded or supplied

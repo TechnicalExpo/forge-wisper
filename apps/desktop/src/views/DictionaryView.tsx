@@ -83,6 +83,7 @@ export const DictionaryView: React.FC = () => {
   // New Snippet Form State
   const [newSnippetTrigger, setNewSnippetTrigger] = useState("");
   const [newSnippetValue, setNewSnippetValue] = useState("");
+  const [editingSnippet, setEditingSnippet] = useState<string | null>(null);
 
   // Live Test Box State
   const [testInput, setTestInput] = useState("");
@@ -134,6 +135,30 @@ export const DictionaryView: React.FC = () => {
     handleSave(updatedSettings);
     setNewSnippetTrigger("");
     setNewSnippetValue("");
+    setEditingSnippet(null);
+  };
+
+  const editSnippet = (trigger: string, value: string) => {
+    setEditingSnippet(trigger);
+    setNewSnippetTrigger(trigger);
+    setNewSnippetValue(value);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancelSnippetEdit = () => {
+    setEditingSnippet(null);
+    setNewSnippetTrigger("");
+    setNewSnippetValue("");
+  };
+
+  const saveSnippetEdit = () => {
+    if (!settings || !newSnippetTrigger.trim() || !newSnippetValue.trim()) return;
+    const nextTrigger = newSnippetTrigger.trim().toLowerCase();
+    const updatedSnippets = { ...settings.snippets };
+    if (editingSnippet && editingSnippet !== nextTrigger) delete updatedSnippets[editingSnippet];
+    updatedSnippets[nextTrigger] = newSnippetValue.trim();
+    void handleSave({ ...settings, snippets: updatedSnippets });
+    cancelSnippetEdit();
   };
 
   const removeSnippet = (key: string) => {
@@ -497,7 +522,7 @@ export const DictionaryView: React.FC = () => {
           <div className="forge-card p-4 space-y-3 rounded-[8px] border border-[var(--border)] bg-[var(--surface-primary)]">
             <div className="flex items-center justify-between">
               <h3 className="text-[14px] font-medium text-[var(--text-primary)] flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[var(--accent)]" /> Add Voice Snippet / Prompt Shortcut
+                <FileText className="w-4 h-4 text-[var(--accent)]" /> {editingSnippet ? "Edit Voice Snippet" : "Add Voice Snippet / Prompt Shortcut"}
               </h3>
               <span className="text-[11px] font-mono text-[var(--accent)] font-medium">Macro Expansion</span>
             </div>
@@ -532,12 +557,21 @@ export const DictionaryView: React.FC = () => {
               <div className="pt-1 flex justify-end">
                 <button
                   type="button"
-                  onClick={addSnippet}
+                  onClick={editingSnippet ? saveSnippetEdit : addSnippet}
                   disabled={!newSnippetTrigger.trim() || !newSnippetValue.trim()}
                   className="px-4 py-2 btn-primary text-[13px] font-medium disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" /> Save Voice Snippet
+                  <Plus className="w-4 h-4" /> {editingSnippet ? "Update Voice Snippet" : "Save Voice Snippet"}
                 </button>
+                {editingSnippet && (
+                  <button
+                    type="button"
+                    onClick={cancelSnippetEdit}
+                    className="px-4 py-2 text-[13px] font-medium text-[var(--text-secondary)] border border-[var(--border)] rounded-[6px] hover:bg-[var(--surface-hover)] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -600,6 +634,14 @@ export const DictionaryView: React.FC = () => {
                           ) : (
                             <Copy className="w-3.5 h-3.5" />
                           )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => editSnippet(trigger, value)}
+                          className="p-1 rounded-[5px] bg-[var(--surface-elevated)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] transition-colors cursor-pointer"
+                          title="Edit snippet"
+                        >
+                          <Type className="w-3.5 h-3.5" />
                         </button>
                         <button
                           type="button"

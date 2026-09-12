@@ -144,6 +144,11 @@ pub fn run() {
                     .build(app)?;
             }
 
+            if let Some(main_window) = app.get_webview_window("main") {
+                let _ = main_window.show();
+                let _ = main_window.set_focus();
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

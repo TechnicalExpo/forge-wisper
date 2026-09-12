@@ -1,20 +1,19 @@
 # Forge Wisper Performance Audit
 
-**Audit date:** 2026-09-11\
+**Audit date:** 2026-09-12\
 **Scope:** React/Vite frontend, Tauri commands, Rust pipeline, audio capture, storage, providers, and output injection.
 
 ## Executive Summary
 
 Forge Wisper uses an appropriate technology stack for a cross-platform desktop dictation application. The lag is not evidence that Rust, React, TypeScript, or Tauri are inherently unsuitable. The strongest causes are application-level:
 
-1. Every settings update performs synchronous disk, Windows registry, and global-hotkey work.
-2. Windows has both the Tauri global shortcut listener and a second native polling listener active.
-3. Microphone meters poll through Tauri IPC every 30-60 ms, with overlapping async calls possible.
-4. Multiple frontend views subscribe to the same processing event and reload data independently.
-5. The floating recorder window is repositioned and shown for every pipeline state transition.
-6. Audio capture uses mutexes and copies the complete sample buffer before encoding.
+The original performance risks have been remediated in focused tasks. Remaining
+work is limited to optional profiling and manual release validation on physical
+Windows input/output devices.
 
-The Local Whisper correctness issue identified in this audit is addressed on the runtime feature branch with real whisper.cpp inference and a regression test. The first runtime path is CPU-based and loads GGML models on demand; model caching and hardware acceleration remain follow-up optimizations.
+Local Whisper now runs real whisper.cpp inference, supports CPU and Vulkan GPU
+backends, detects the NVIDIA RTX 3070 on the validation machine, and caches
+model contexts by model path/backend/device.
 
 ## Evidence And Verification
 
@@ -34,13 +33,16 @@ Build time: 4.62s
 
 The architecture and bundle analyzer scripts completed without findings, but their output is not sufficient to replace runtime profiling.
 
-### Blocked checks
+### Current verification
 
-Rustup and the stable MSVC toolchain are now installed globally. Visual Studio Build Tools 2022 is also complete, including MSVC 14.44.35207 and the Windows C++ environment. Rust checks were attempted with Microsoft's linker explicitly placed first on PATH.
+Rustup, MSVC, LLVM/libclang, CMake, and the Vulkan SDK are configured through
+the Windows launcher. The launcher places Microsoft's linker first and uses a
+short Cargo target directory to avoid the nested Vulkan shader path limit.
 
 ```text
- cargo test --workspace       -> build-script executable blocked by Windows Application Control policy (OS error 4551)
- cargo clippy --workspace ... -> not completed after the same policy blocker
+cargo test --workspace                         -> passed
+cargo clippy --workspace --all-targets -D warnings -> passed
+pnpm --filter @forge-wisper/desktop build      -> passed
 ```
 
 The linker itself was verified as:
@@ -58,7 +60,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ## Findings
 
-### P0: Settings updates perform unrelated synchronous work
+### Resolved: Settings updates perform unrelated synchronous work
 
 **Files:**
 
@@ -68,17 +70,20 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 `update_settings` always writes the complete JSON settings file, calls Windows `reg`, unregisters all global shortcuts, and registers several shortcut variants. This happens even when the user only changes theme, formatting mode, microphone, dictionary, or snippets.
 
-**Impact:** settings clicks wait on synchronous OS process and hotkey work.
+**Resolution:** `SettingsPatch` updates only supplied fields, and OS integration
+work runs only when the corresponding setting changes. External validation runs
+before settings are persisted, with rollback on failure.
 
 **Recommendation:** implement field-specific updates or a settings patch command. Only modify autostart when `launch_at_startup` changes. Only re-register hotkeys when `hotkey` changes. Persist after validation succeeds.
 
-### P0: Duplicate Windows hotkey systems
+### Resolved: Duplicate Windows hotkey systems
 
 **File:** `apps/desktop/src-tauri/src/lib.rs`
 
 The Tauri global shortcut plugin is registered and `start_native_windows_hotkey_listener` also starts a 15 ms Windows polling loop.
 
-**Impact:** duplicate events, redundant CPU work, and possible race conditions around start/stop processing.
+**Resolution:** the native Windows listener is no longer started alongside the
+canonical Tauri path for supported shortcuts.
 
 **Recommendation:** keep one implementation per platform. Do not register the same shortcut through both systems.
 
@@ -96,7 +101,7 @@ The provider now loads a compatible GGML model and runs CPU inference through `w
 
 **Recommendation:** integrate an actual Whisper runtime or mark the feature unavailable until implemented.
 
-### P1: Overlapping microphone IPC polling
+### Resolved: Overlapping microphone IPC polling
 
 **Files:**
 
@@ -106,11 +111,12 @@ The provider now loads a compatible GGML model and runs CPU inference through `w
 
 `setInterval(async () => ...)` starts a new invocation without waiting for the previous `get_mic_level` call. Dashboard and recorder polling can run at the same time.
 
-**Impact:** high IPC traffic, stale level updates, unnecessary React renders, and possible event-loop pressure.
+**Resolution:** views use a cancellable recursive timeout helper with an 80 ms
+minimum interval and no overlapping requests.
 
 **Recommendation:** use a non-overlapping recursive timeout or emit throttled audio-level events from Rust.
 
-### P1: Processing events trigger redundant reloads
+### Resolved: Processing events trigger redundant reloads
 
 **Files:**
 
@@ -119,27 +125,30 @@ The provider now loads a compatible GGML model and runs CPU inference through `w
 
 The root app reloads settings on every state event. Dashboard also reloads settings, history, processing state, and audio devices on terminal states.
 
-**Impact:** one dictation can cause many duplicate IPC and SQLite calls.
+**Resolution:** the shared application store owns processing state and settings;
+Dashboard refreshes terminal data through targeted APIs only.
 
 **Recommendation:** centralize frontend state and emit separate events for processing state, inserted history, and settings changes.
 
-### P1: Recorder window is repositioned for every state
+### Resolved: Recorder window is repositioned for every state
 
 **File:** `apps/desktop/src-tauri/src/state.rs:153-205`
 
 `set_state` queries the monitor, calculates position, moves the window, and shows it for all active pipeline states.
 
-**Impact:** unnecessary native window work during transcription and cleanup.
+**Resolution:** monitor lookup and positioning occur on inactive-to-active
+transitions rather than every processing state.
 
 **Recommendation:** position/show only on inactive-to-active transition; update content/state without repeated repositioning.
 
-### P1: Audio callback uses mutex-protected dynamic buffer
+### Resolved: Audio callback uses mutex-protected dynamic buffer
 
 **File:** `crates/audio/src/lib.rs:58-64, 120-173`
 
 The real-time callback locks a `Mutex<Vec<f32>>`, appends samples, and updates RMS under another mutex.
 
-**Impact:** blocking and allocations inside a real-time audio callback can cause capture jitter.
+**Resolution:** RMS uses atomic storage, the sample buffer is preallocated, and
+stop transfers ownership instead of cloning the complete recording.
 
 **Recommendation:** use a bounded/ring buffer, preallocate where possible, and store RMS in an atomic value.
 
@@ -153,13 +162,14 @@ Stopping clones the full buffer and then creates additional mono, normalized, re
 
 **Recommendation:** transfer ownership of the sample buffer and reduce intermediate allocations.
 
-### P1: Settings can be persisted even when hotkey registration fails
+### Resolved: Settings can be persisted even when hotkey registration fails
 
 **File:** `apps/desktop/src-tauri/src/commands.rs:51-67`
 
 Settings are written and installed in memory before hotkey registration is attempted.
 
-**Impact:** the UI can report failure while the new settings are already active and persisted.
+**Resolution:** hotkey/autostart validation completes before persistence and the
+previous hotkey is restored if a later external operation fails.
 
 **Recommendation:** validate and register external resources first, then commit settings; define rollback behavior.
 
@@ -173,33 +183,35 @@ Startup calls `set_autostart(true)` regardless of persisted user preference.
 
 **Recommendation:** apply the persisted `launch_at_startup` value.
 
-### P2: Dashboard loads and computes metrics in the renderer
+### Resolved: Dashboard loads and computes metrics in the renderer
 
 **File:** `apps/desktop/src/views/Dashboard.tsx:142-159`
 
 The dashboard loads up to 100 full history records and calculates word counts and metrics in React.
 
-**Impact:** unnecessary data transfer and renderer work; metrics are capped at the latest 100 records.
+**Resolution:** SQLite returns aggregate dashboard metrics directly.
 
 **Recommendation:** add a backend aggregate command and database-level pagination.
 
-### P2: History search runs on every keystroke
+### Resolved: History search runs on every keystroke
 
 **File:** `apps/desktop/src/views/HistoryView.tsx:24-39`
 
 Every character invokes SQLite search.
 
-**Recommendation:** debounce by 200-300 ms and ignore stale responses.
+**Resolution:** HistoryView debounces search by 250 ms, uses database pagination,
+and ignores stale requests.
 
-### P2: Dictionary sandbox duplicates Rust cleanup logic
+### Resolved: Dictionary sandbox duplicates Rust cleanup logic
 
 **File:** `apps/desktop/src/views/DictionaryView.tsx:162-189`
 
 The frontend recompiles regexes for every dictionary/snippet item and has behavior separate from `RuleBasedCleaner`.
 
-**Recommendation:** add a backend preview command using the real cleanup engine.
+**Resolution:** DictionaryView calls `preview_cleanup`, which uses the same Rust
+cleanup engine as real transcription.
 
-### P2: Duplicate model manager instances
+### Resolved: Duplicate model manager instances
 
 **Files:**
 
@@ -208,7 +220,7 @@ The frontend recompiles regexes for every dictionary/snippet item and has behavi
 
 `PipelineState` owns one `ModelManager`, while `LocalWhisperProvider` constructs another.
 
-**Recommendation:** inject and share one `Arc<ModelManager>`.
+**Resolution:** PipelineState and LocalWhisperProvider share one `Arc<ModelManager>`.
 
 ## Strengths
 

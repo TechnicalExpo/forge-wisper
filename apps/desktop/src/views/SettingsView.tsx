@@ -11,6 +11,7 @@ import type {
   LanguageCode,
 } from "../types";
 import { ForgeLogo } from "../components/ForgeLogo";
+import { Dropdown, Toggle, Badge } from "../components/ui";
 import {
   Zap,
   Cpu,
@@ -36,7 +37,6 @@ import {
   Radio,
   RotateCcw,
   ExternalLink,
-  ChevronDown,
 } from "lucide-react";
 
 interface SettingsViewProps {
@@ -85,7 +85,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
     reason: string;
   } | null>(null);
   const [micLevel, setMicLevel] = useState(0);
-  const [retentionDropdownOpen, setRetentionDropdownOpen] = useState(false);
   const stopMicPollingRef = useRef<(() => void) | null>(null);
 
   const toggleMicTest = async () => {
@@ -464,19 +463,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
                     CPU is the default. GPU mode uses Vulkan when available.
                   </p>
                 </div>
-                <select
+                <Dropdown
+                  compact
                   value={settings.compute_device}
-                  onChange={(e) =>
-                    handleSave({
-                      ...settings,
-                      compute_device: e.target.value as "cpu" | "gpu",
-                    })
-                  }
-                  className="px-3 py-2 bg-[var(--surface-primary)] border border-[var(--border)] rounded-[7px] text-[13px] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)] cursor-pointer"
-                >
-                  <option value="cpu">CPU (Default)</option>
-                  <option value="gpu">GPU</option>
-                </select>
+                  onChange={(v) => handleSave({ ...settings, compute_device: v as "cpu" | "gpu" })}
+                  options={[
+                    { value: "cpu", label: "CPU (Default)" },
+                    { value: "gpu", label: "GPU" },
+                  ]}
+                />
               </div>
               <div className="text-[11px] font-mono text-[var(--text-secondary)]">
                 {computeInfo?.gpu_available
@@ -494,18 +489,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
             <p className="text-[12px] text-[var(--text-secondary)] mb-2">
               Choose a spoken language or let the selected engine detect it automatically.
             </p>
-            <select
+                        <Dropdown
               value={settings.language}
-              onChange={(e) => handleSave({ language: e.target.value as LanguageCode })}
-              className="w-full px-3 py-2 bg-[var(--surface-primary)] border border-[var(--border)] rounded-[7px] text-[13px] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)] cursor-pointer"
-            >
-              {[
-                ["auto", "Auto Detect"], ["en", "English"], ["ur", "Urdu"], ["es", "Spanish"],
-                ["fr", "French"], ["de", "German"], ["it", "Italian"], ["pt", "Portuguese"],
-                ["zh", "Chinese"], ["ja", "Japanese"], ["ko", "Korean"], ["ar", "Arabic"],
-                ["hi", "Hindi"], ["ru", "Russian"], ["nl", "Dutch"], ["tr", "Turkish"], ["pl", "Polish"],
-              ].map(([code, label]) => <option key={code} value={code}>{label}</option>)}
-            </select>
+              onChange={(v) => handleSave({ language: v as LanguageCode })}
+              options={[
+                { value: "auto", label: "Auto Detect" },
+                { value: "en", label: "English" },
+                { value: "ur", label: "Urdu" },
+                { value: "es", label: "Spanish" },
+                { value: "fr", label: "French" },
+                { value: "de", label: "German" },
+                { value: "it", label: "Italian" },
+                { value: "pt", label: "Portuguese" },
+                { value: "zh", label: "Chinese" },
+                { value: "ja", label: "Japanese" },
+                { value: "ko", label: "Korean" },
+                { value: "ar", label: "Arabic" },
+                { value: "hi", label: "Hindi" },
+                { value: "ru", label: "Russian" },
+                { value: "nl", label: "Dutch" },
+                { value: "tr", label: "Turkish" },
+                { value: "pl", label: "Polish" },
+              ]}
+            />
           </div>
 
           {/* 2-Column Grid: Model Architecture & Microphone Device */}
@@ -539,26 +545,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
                   Active Model
                 </label>
                 {settings.provider === "groq" ? (
-                  <select
+                                    <Dropdown
                     value={settings.model}
-                    onChange={(e) => handleSave({ ...settings, model: e.target.value })}
-                    className="w-full px-3 py-2 bg-[var(--surface-primary)] border border-[var(--border)] rounded-[7px] text-[13px] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)] cursor-pointer"
-                  >
-                    <option value="whisper-large-v3-turbo">whisper-large-v3-turbo (Fastest Latency)</option>
-                    <option value="whisper-large-v3">whisper-large-v3 (Maximum Precision)</option>
-                  </select>
+                    onChange={(v) => handleSave({ ...settings, model: v })}
+                    options={[
+                      { value: "whisper-large-v3-turbo", label: "whisper-large-v3-turbo (Fastest Latency)" },
+                      { value: "whisper-large-v3", label: "whisper-large-v3 (Maximum Precision)" },
+                    ]}
+                  />
                 ) : (
-                  <select
+                                    <Dropdown
                     value={settings.model}
-                    onChange={(e) => handleSave({ ...settings, model: e.target.value })}
-                    className="w-full px-3 py-2 bg-[var(--surface-primary)] border border-[var(--border)] rounded-[7px] text-[13px] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)] cursor-pointer"
-                  >
-                    <option value="base">base.bin (Default • 142 MB • Fast)</option>
-                    <option value="tiny">tiny.bin (75 MB • Ultra Lightweight)</option>
-                    <option value="small">small.bin (466 MB • Balanced)</option>
-                    <option value="medium">medium.bin (1.5 GB • High Accuracy)</option>
-                    <option value="large-v3">large-v3.bin (3.1 GB • Maximum Accuracy)</option>
-                  </select>
+                    onChange={(v) => handleSave({ ...settings, model: v })}
+                    options={[
+                      { value: "base", label: "base.bin (Default • 142 MB • Fast)" },
+                      { value: "tiny", label: "tiny.bin (75 MB • Ultra Lightweight)" },
+                      { value: "small", label: "small.bin (466 MB • Balanced)" },
+                      { value: "medium", label: "medium.bin (1.5 GB • High Accuracy)" },
+                      { value: "large-v3", label: "large-v3.bin (3.1 GB • Maximum Accuracy)" },
+                    ]}
+                  />
                 )}
               </div>
             </div>
@@ -575,18 +581,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
 
                 <div>
                   <label className="text-[11px] text-[var(--text-muted)] block mb-1 font-mono">Selected Input Device</label>
-                  <select
-                    value={settings.microphone || ""}
-                    onChange={(e) => handleSave({ ...settings, microphone: e.target.value ? e.target.value : null })}
-                    className="w-full px-3 py-2 bg-[var(--surface-primary)] border border-[var(--border)] rounded-[7px] text-[13px] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)] cursor-pointer"
-                  >
-                    <option value="">System Default Microphone (Automatic)</option>
-                    {audioDevices.map((d) => (
-                      <option key={d.name} value={d.name}>
-                        {d.name} {d.is_default ? "★ (OS Default)" : ""}
-                      </option>
-                    ))}
-                  </select>
+                                      <Dropdown
+                      value={settings.microphone || ""}
+                      onChange={(v) => handleSave({ ...settings, microphone: v || null })}
+                      options={[
+                        { value: "", label: "System Default Microphone (Automatic)" },
+                        ...audioDevices.map((d) => ({
+                          value: d.name,
+                          label: d.name + (d.is_default ? " ★ (OS Default)" : ""),
+                        })),
+                      ]}
+                    />
                 </div>
               </div>
 
@@ -883,16 +888,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
                 </p>
               </div>
 
-              <select
-                value={settings.formatting_mode}
-                onChange={(e) => handleSave({ ...settings, formatting_mode: e.target.value as FormattingMode })}
-                className="w-full px-3 py-2 bg-[var(--surface-primary)] border border-[var(--border)] rounded-[7px] text-[13px] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)] cursor-pointer"
-              >
-                <option value="Smart">Smart (Contextual verbal self-corrections)</option>
-                <option value="Clean">Clean (Punctuation, casing & filler removal)</option>
-                <option value="Structured">Structured (Convert spoken outlines into bullet points)</option>
-                <option value="Raw">Raw (Verbatim speech without modification)</option>
-              </select>
+                              <Dropdown
+                  value={settings.formatting_mode}
+                  onChange={(v) => handleSave({ ...settings, formatting_mode: v as FormattingMode })}
+                  options={[
+                    { value: "Smart", label: "Smart (Contextual verbal self-corrections)" },
+                    { value: "Clean", label: "Clean (Punctuation, casing & filler removal)" },
+                    { value: "Structured", label: "Structured (Convert spoken outlines into bullet points)" },
+                    { value: "Raw", label: "Raw (Verbatim speech without modification)" },
+                  ]}
+                />
             </div>
           </div>
         </div>
@@ -1079,49 +1084,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
               <h4 className="text-[14px] font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
                 <Shield className="w-4 h-4 text-[var(--accent)]" /> History Retention & Disk Security
               </h4>
-              <span className="text-[11px] font-mono text-[var(--accent)]">Zero Audio On Disk</span>
+              <Badge>Zero Audio On Disk</Badge>
             </div>
 
-            <div>
-              <label className="text-[11px] text-[var(--text-muted)] block mb-1 font-mono">Transcript Retention</label>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setRetentionDropdownOpen((v) => !v)}
-                  className="w-full flex items-center justify-between px-3 py-2 bg-[var(--surface-primary)] border border-[var(--border)] rounded-[7px] text-[13px] text-[var(--text-primary)] font-mono cursor-pointer hover:border-[var(--accent)] transition-colors"
-                >
-                  <span>
-                    {settings.retention_policy === "Days30" ? "Keep Transcripts for 30 Days (Default)" :
-                     settings.retention_policy === "Days7" ? "Keep Transcripts for 7 Days" :
-                     settings.retention_policy === "Forever" ? "Keep Transcripts Forever (Local SQLite)" :
-                     "Do Not Save Transcripts (Incognito Mode)"}
-                  </span>
-                  <ChevronDown className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${retentionDropdownOpen ? "rotate-180" : ""}`} />
-                </button>
-                {retentionDropdownOpen && (
-                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-[7px] shadow-lg overflow-hidden">
-                    {([
-                      ["Days30", "Keep Transcripts for 30 Days (Default)"],
-                      ["Days7", "Keep Transcripts for 7 Days"],
-                      ["Forever", "Keep Transcripts Forever (Local SQLite)"],
-                      ["Off", "Do Not Save Transcripts (Incognito Mode)"],
-                    ] as [string, string][]).map(([val, label]) => (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => { handleSave({ ...settings, retention_policy: val as RetentionPolicy }); setRetentionDropdownOpen(false); }}
-                        className={`w-full text-left px-3 py-2 text-[13px] font-mono cursor-pointer transition-colors ${
-                          settings.retention_policy === val
-                            ? "bg-[var(--accent)]/10 text-[var(--accent)]"
-                            : "text-[var(--text-primary)] hover:bg-[var(--surface-primary)]"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                        <div>
+              <Dropdown
+                label="Transcript Retention"
+                value={settings.retention_policy}
+                onChange={(v) => handleSave({ ...settings, retention_policy: v as RetentionPolicy })}
+                options={[
+                  { value: "Days30", label: "Keep Transcripts for 30 Days (Default)" },
+                  { value: "Days7", label: "Keep Transcripts for 7 Days" },
+                  { value: "Forever", label: "Keep Transcripts Forever (Local SQLite)" },
+                  { value: "Off", label: "Do Not Save Transcripts (Incognito Mode)" },
+                ]}
+              />
             </div>
 
             <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
@@ -1137,24 +1114,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
                 this preference and does not save microphone audio to disk.
               </p>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={settings.launch_at_startup}
-              onClick={() => handleSave({ launch_at_startup: !settings.launch_at_startup })}
-              className={`relative shrink-0 w-12 h-6 rounded-full transition-colors cursor-pointer ${
-                settings.launch_at_startup
-                  ? "bg-[var(--accent)]"
-                  : "bg-[var(--surface-elevated)]"
-              }`}
+            <Toggle
+              checked={!!settings.launch_at_startup}
+              onChange={(v) => handleSave({ launch_at_startup: v })}
               title={settings.launch_at_startup ? "Disable launch at startup" : "Enable launch at startup"}
-            >
-              <span
-                className={`absolute top-1/2 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm -translate-y-1/2 transition-transform ${
-                  settings.launch_at_startup ? "translate-x-6" : "translate-x-0"
-                }`}
-              />
-            </button>
+            />
           </div>
         </div>
       )}

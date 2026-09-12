@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { api } from "../lib/tauri";
 import { setAppSettings, useAppStore } from "../state/appStore";
 import type { AppSettings } from "../types";
+import { Dropdown } from "../components/ui";
 import {
   BookOpen,
   Plus,
@@ -360,19 +361,18 @@ export const DictionaryView: React.FC = () => {
               {/* Rows Per Page Selector */}
               <div className="flex items-center gap-2 text-[12px] text-[var(--text-secondary)] font-mono">
                 <span>Show:</span>
-                <select
-                  value={wordsPerPage}
-                  onChange={(e) => {
-                    setWordsPerPage(Number(e.target.value));
-                    setWordPage(1);
-                  }}
-                  className="px-2 py-0.5 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-[6px] text-[12px] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)]"
-                >
-                  <option value={7}>7 rows</option>
-                  <option value={10}>10 rows</option>
-                  <option value={20}>20 rows</option>
-                  <option value={50}>50 rows</option>
-                </select>
+                <Dropdown
+                  compact
+                  fullWidth={false}
+                  value={String(wordsPerPage)}
+                  onChange={(v) => { setWordsPerPage(Number(v)); setWordPage(1); }}
+                  options={[
+                    { value: "7", label: "7 rows" },
+                    { value: "10", label: "10 rows" },
+                    { value: "20", label: "20 rows" },
+                    { value: "50", label: "50 rows" },
+                  ]}
+                />
                 <span className="text-[var(--text-muted)] font-mono ml-2">
                   Page {activeWordPage} of {totalWordPages}
                 </span>
@@ -588,19 +588,18 @@ export const DictionaryView: React.FC = () => {
               {/* Rows Per Page Selector */}
               <div className="flex items-center gap-2 text-[12px] text-[var(--text-secondary)] font-mono">
                 <span>Show:</span>
-                <select
-                  value={snippetsPerPage}
-                  onChange={(e) => {
-                    setSnippetsPerPage(Number(e.target.value));
-                    setSnippetPage(1);
-                  }}
-                  className="px-2 py-0.5 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-[6px] text-[12px] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)]"
-                >
-                  <option value={4}>4 items</option>
-                  <option value={6}>6 items</option>
-                  <option value={12}>12 items</option>
-                  <option value={24}>24 items</option>
-                </select>
+                <Dropdown
+                  compact
+                  fullWidth={false}
+                  value={String(snippetsPerPage)}
+                  onChange={(v) => { setSnippetsPerPage(Number(v)); setSnippetPage(1); }}
+                  options={[
+                    { value: "4", label: "4 items" },
+                    { value: "6", label: "6 items" },
+                    { value: "12", label: "12 items" },
+                    { value: "24", label: "24 items" },
+                  ]}
+                />
                 <span className="text-[var(--text-muted)] font-mono ml-2">
                   Page {activeSnippetPage} of {totalSnippetPages}
                 </span>

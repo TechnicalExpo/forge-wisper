@@ -9,6 +9,15 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.15] - 2026-09-13
+
+### UI
+
+- Added reusable Card, Badge, Dropdown, and Toggle components for consistent
+  settings and dictionary controls.
+- Standardized settings dropdown spacing, open-state indicators, and startup
+  toggle presentation.
+
 ## [0.3.14] - 2026-09-13
 
 ### Fixed

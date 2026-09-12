@@ -426,17 +426,21 @@ pnpm --filter @forge-wisper/desktop build
 **Interfaces:**
 - Add a preview command that accepts text and current cleanup settings and returns cleaned text.
 
-- [ ] **Step 1: Add `preview_cleanup` command**
+- [x] **Step 1: Add `preview_cleanup` command**
 
 Construct a `Transcript` and call `RuleBasedCleaner::clean` using the same path as real dictation.
 
-- [ ] **Step 2: Replace frontend regex simulation**
+- [x] **Step 2: Replace frontend regex simulation**
 
 Debounce preview input and call the backend command.
 
-- [ ] **Step 3: Verify parity**
+- [x] **Step 3: Verify parity**
 
 Use the same input in the dictionary sandbox and a cleanup unit test; expected output must match.
+
+> Task 11 is implemented on `feat/dictionary-preview-backend-v2`. Dictionary
+> preview now calls the Rust cleanup pipeline with a 250 ms debounce and ignores
+> stale responses, keeping preview behavior aligned with real dictation.
 
 ---
 

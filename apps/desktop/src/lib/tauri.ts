@@ -20,6 +20,7 @@ export const api = {
   cancelRecording: () => invoke<void>("cancel_recording"),
 
   getSettings: () => invoke<AppSettings>("get_settings"),
+  previewCleanup: (text: string) => invoke<string>("preview_cleanup", { text }),
   updateSettings: (patch: SettingsPatch) =>
     invoke<void>("update_settings", { patch }),
   getLocalComputeDeviceInfo: () => invoke<{

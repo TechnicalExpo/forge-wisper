@@ -286,7 +286,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   };
   const savedTime = parseSavedTime(metrics.timeSavedStr);
 
-  // Equalizer bars for balanced card width
+  // Fixed waveform shape used by the live audio visualizer.
   const equalizerMultipliers = [
     0.15, 0.25, 0.35, 0.5, 0.65, 0.8, 0.95, 1.0,
     0.9, 0.75, 0.6, 0.5, 0.45, 0.6, 0.8, 1.0,
@@ -296,11 +296,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   return (
     <div className="space-y-4 animate-fadeIn font-sans max-w-[1200px] mx-auto select-none">
-      {/* 1. TOP ACTION BAR */}
+      {/* Status, active engine, shortcut, and recording controls. */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-[13px] font-sans">
-        {/* Left Side: Status & Active Engine Pill */}
+        {/* Recording status and active engine. */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          {/* Status Indicator Badge */}
+          {/* Recording status. */}
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-[var(--surface-primary)] border border-[var(--border)] text-[13px]">
             <span
               className={`w-2 h-2 rounded-full ${isRecording ? "bg-[var(--accent)] animate-pulse" : "bg-[var(--accent)]"
@@ -311,7 +311,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </span>
           </div>
 
-          {/* Engine Pill */}
+          {/* Active engine and model. */}
           <button
             type="button"
             onClick={() => onNavigate(settings?.provider === "local-whisper" ? "models" : "settings")}
@@ -328,9 +328,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </button>
         </div>
 
-        {/* Right Side: Keycaps, Dictate Button & Settings */}
+        {/* Shortcut, recording action, and settings. */}
         <div className="flex items-center gap-2.5 shrink-0">
-          {/* Shortcut Keycaps */}
+          {/* Configured global shortcut. */}
           <div
             onClick={() => onNavigate("settings")}
             title="Configured Global Hotkey (Click to change in Settings)"
@@ -348,7 +348,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             ))}
           </div>
 
-          {/* Primary Dictate Button */}
+          {/* Primary recording action. */}
           <button
             type="button"
             onClick={toggleRecording}
@@ -378,7 +378,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             )}
           </button>
 
-          {/* Settings Icon Button */}
+          {/* Settings shortcut. */}
           <button
             type="button"
             onClick={() => onNavigate("settings")}
@@ -390,9 +390,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* RIGHT: FORGE WORDS STATS CARD */}
+      {/* Usage metrics and timeframe filter. */}
       <div className="forge-card self-start w-full lg:col-span-1 p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] flex flex-col justify-between space-y-3 min-h-[160px]">
-        {/* Header with Title and Today Dropdown */}
+        {/* Card header and timeframe filter. */}
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest">
             FORGE WORDS
@@ -431,9 +431,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* 3 Metric Columns with Balanced Proportions */}
+        {/* Usage metrics. */}
         <div className="grid grid-cols-3 gap-2 sm:gap-4 my-auto py-2 text-center items-center">
-          {/* Col 1: Words transcribed */}
+          {/* Words transcribed. */}
           <div className="flex flex-col items-center space-y-1">
             <div className="text-[32px] sm:text-[36px] font-bold font-sans text-[var(--text-primary)] tracking-tight leading-none tabular-nums">
               {metrics.wordsTranscribed}
@@ -443,7 +443,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Col 2: Time saved */}
+          {/* Time saved. */}
           <div className="flex flex-col items-center space-y-1">
             <div className="flex items-baseline justify-center text-[32px] sm:text-[36px] font-bold font-sans text-[var(--text-primary)] tracking-tight leading-none tabular-nums">
               <span>{savedTime.value}</span>
@@ -456,7 +456,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Col 3: Sessions */}
+          {/* Sessions. */}
           <div className="flex flex-col items-center space-y-1">
             <div className="text-[32px] sm:text-[36px] font-bold font-sans text-[var(--text-primary)] tracking-tight leading-none tabular-nums">
               {metrics.sessionsCount}
@@ -468,11 +468,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* 2. BENTO DASHBOARD: transcript, metrics, controls, and recent history */}
+      {/* Latest dictation card. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4">
-        {/* LEFT: DICTATION CARD */}
+        {/* Latest transcript and live audio state. */}
         <div className="forge-card self-start w-full lg:col-span-2 p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] flex flex-col justify-between space-y-3 min-h-[160px]">
-          {/* Card Top: Section Title & Live Transcription Metadata */}
+          {/* Section title and live transcription metadata. */}
           <div className="space-y-1">
             <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest block">
               DICTATION
@@ -496,7 +496,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <span className="text-[var(--text-muted)] font-mono">{metrics.wpm} WPM</span>
               </div>
 
-              {/* Action Buttons: Copy & Format Dropdown */}
+              {/* Transcript actions. */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -516,7 +516,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   )}
                 </button>
 
-                {/* Format Dropdown */}
+                {/* Formatting mode selector. */}
                 <div className="relative" ref={formatDropdownRef}>
                   <button
                     type="button"
@@ -550,7 +550,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Dictation Text Body with Blinking Cursor */}
+          {/* Latest transcript with live cursor. */}
           <div className="py-2 min-h-[56px] max-h-[220px] overflow-y-auto overscroll-contain">
             <p className="text-[14px] sm:text-[15px] font-sans font-normal text-[var(--text-primary)] leading-relaxed break-words">
               {latestDictationText}
@@ -558,7 +558,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </p>
           </div>
 
-          {/* Bottom Equalizer Soundwave Bar */}
+          {/* Live audio waveform. */}
           <div className="pt-2 flex items-center justify-between gap-[3px] h-[20px] w-full overflow-hidden">
             {equalizerMultipliers.map((mult, i) => {
               const minH = 3;
@@ -582,16 +582,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* 3. CURRENT SETUP TOOLBAR */}
+      {/* Current engine, cleanup mode, microphone, and input level. */}
       <div className="forge-card lg:col-span-1 p-3.5 sm:p-4 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] space-y-2">
         <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest block">
           CURRENT SETUP
         </span>
 
         <div className="flex flex-wrap items-center justify-between gap-4 text-[12px] font-sans">
-          {/* Controls: Engine, Mode, Microphone */}
+          {/* Engine, cleanup mode, and microphone controls. */}
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-            {/* 1. Engine Segmented Selector */}
+            {/* Speech engine selector. */}
             <div className="flex items-center gap-2">
               <span className="text-[var(--text-muted)] font-medium">Engine</span>
               <div className="inline-flex items-center p-0.5 rounded-[6px] bg-[var(--surface-elevated)] border border-[var(--border)]">
@@ -619,7 +619,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </div>
             </div>
 
-            {/* 2. Mode Dropdown (Compact Size) */}
+            {/* Cleanup mode selector. */}
             <div className="flex items-center gap-2">
               <span className="text-[var(--text-muted)] font-medium">Mode</span>
               <div className="relative" ref={modeDropdownRef}>
@@ -652,7 +652,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </div>
             </div>
 
-            {/* 3. Microphone Selector */}
+            {/* Microphone selector. */}
             <div className="flex items-center gap-2">
               <span className="text-[var(--text-muted)] font-medium">Microphone</span>
               <div className="relative" ref={micDropdownRef}>
@@ -696,7 +696,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Far Right: Segmented LED Audio VU Meter */}
+          {/* Input level meter. */}
           <div className="flex items-center gap-2">
             <span className="text-[var(--text-muted)] font-medium text-[11px] uppercase tracking-wider">Level</span>
             <div className="flex items-center gap-[2px] h-3.5">
@@ -725,9 +725,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* 4. RECENT DICTATIONS SECTION */}
+      {/* Recent dictation history. */}
       <div className="forge-card lg:col-span-2 p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] space-y-3">
-        {/* Section Header */}
+        {/* Section heading and history link. */}
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest">
             RECENT DICTATIONS
@@ -740,7 +740,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </button>
         </div>
 
-        {/* Dictation List Rows */}
+        {/* History rows. */}
         {history.length === 0 ? (
           <div className="p-6 text-center text-[var(--text-muted)] text-[13px] font-sans rounded-[6px] border border-[var(--border)] bg-[var(--surface-elevated)]">
             No dictations recorded yet. Press {readableHotkey} and start speaking.
@@ -756,7 +756,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   key={item.id}
                   className="px-3 py-2.5 rounded-[6px] hover:bg-[var(--surface-elevated)] transition-colors flex flex-wrap items-center justify-between gap-3 group border border-transparent hover:border-[var(--border)]"
                 >
-                  {/* Left: Document Icon & Transcription Text */}
+                  {/* Transcript preview. */}
                   <div className="flex items-center gap-3 flex-1 min-w-[260px]">
                     <div className="w-6 h-6 rounded-[4px] bg-[var(--surface-elevated)] border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] shrink-0">
                       <FileText className="w-3.5 h-3.5" />
@@ -766,9 +766,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                     </p>
                   </div>
 
-                  {/* Middle & Right: Metadata & Actions */}
+                  {/* Metadata and row actions. */}
                   <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap justify-end">
-                    {/* Timestamp & Provider Metadata */}
+                    {/* Timestamp, provider, and latency. */}
                     <div className="flex items-center gap-2 text-[12px] font-sans text-[var(--text-muted)]">
                       <span>
                         {new Date(item.created_at).toLocaleTimeString([], {
@@ -781,7 +781,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                         {item.provider_id === "local-whisper" ? "Local" : "Groq"}
                       </span>
                       <span>·</span>
-                      {/* Latency Pill Badge */}
+                      {/* Transcription latency. */}
                       <span
                         className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded-[4px] font-mono text-[11px] font-medium ${isFast
                           ? "bg-[rgba(16,185,129,0.12)] text-[#10b981] border border-[rgba(16,185,129,0.3)]"
@@ -795,7 +795,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       </span>
                     </div>
 
-                    {/* Action: Copy */}
+                    {/* Copy transcript. */}
                     <button
                       onClick={() => copyText(item.final_text, item.id)}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] bg-[var(--surface-primary)] hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-[12px] font-medium transition-colors cursor-pointer"
@@ -814,7 +814,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       )}
                     </button>
 
-                    {/* Action: More Menu */}
+                    {/* Additional row actions. */}
                     <div className="relative">
                       <button
                         onClick={(e) => {

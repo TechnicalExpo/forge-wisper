@@ -541,6 +541,13 @@ impl ModelManager {
         let archive_path = self.models_dir.join(format!("{}.part.tar.gz", target.id));
         let extract_path = self.models_dir.join(format!("{}.part", target.filename));
         let destination = self.models_dir.join(&target.filename);
+        tracing::info!(
+            target: "forge.model_download",
+            phase = "started",
+            model_id = %target.id,
+            destination = %destination.display(),
+            "Starting Parakeet model archive download"
+        );
         let response = Client::new()
             .get(&target.download_url)
             .send()
@@ -553,14 +560,31 @@ impl ModelManager {
             )));
         }
         let total = response.content_length().unwrap_or(target.size_mb * 1024 * 1024);
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|error| ProviderError::NetworkError(error.to_string()))?;
-        progress(bytes.len() as u64, total);
-        std::fs::write(&archive_path, &bytes)
+        tracing::info!(
+            target: "forge.model_download",
+            phase = "connected",
+            model_id = %target.id,
+            total_bytes = total,
+            "Connected to Parakeet model download source"
+        );
+
+        let mut file = File::create(&archive_path)
+            .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+        let mut response = response;
+        let mut downloaded: u64 = 0;
+        while let Some(chunk) = response.chunk().await.map_err(|error| {
+            let _ = remove_file(&archive_path);
+            ProviderError::NetworkError(error.to_string())
+        })? {
+            file.write_all(&chunk)
+                .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+            downloaded = downloaded.saturating_add(chunk.len() as u64);
+            progress(downloaded, total);
+        }
+        file.flush()
             .map_err(|error| ProviderError::ModelError(error.to_string()))?;
         verify_model_hash(&archive_path, &target.sha256)?;
+        progress(total, total);
 
         let _ = std::fs::remove_dir_all(&extract_path);
         std::fs::create_dir_all(&extract_path)

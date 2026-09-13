@@ -298,21 +298,28 @@ pub async fn download_model(
 
     let result = state
         .model_manager
-        .download_model_with_progress(&model_id, move |downloaded, total| {
-            let percentage = if total > 0 {
-                ((downloaded as f64 / total as f64) * 100.0).round() as u32
-            } else {
-                0
-            };
-            let _ = app_handle.emit(
-                "forge://model-download-progress",
-                serde_json::json!({
-                    "model_id": mid,
-                    "downloaded_bytes": downloaded,
-                    "total_bytes": total,
-                    "percentage": percentage
-                }),
-            );
+        .download_model_with_progress(&model_id, {
+            let mut last_percentage = 0u32;
+            move |downloaded, total| {
+                let percentage = if total > 0 {
+                    ((downloaded as f64 / total as f64) * 100.0).round() as u32
+                } else {
+                    0
+                };
+                let should_emit = percentage > last_percentage || percentage == 100;
+                if should_emit {
+                    last_percentage = percentage;
+                    let _ = app_handle.emit(
+                        "forge://model-download-progress",
+                        serde_json::json!({
+                            "model_id": mid,
+                            "downloaded_bytes": downloaded,
+                            "total_bytes": total,
+                            "percentage": percentage
+                        }),
+                    );
+                }
+            }
         })
         .await
         .map(|p| p.to_string_lossy().to_string())

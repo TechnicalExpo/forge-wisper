@@ -286,6 +286,13 @@ Thank you to everyone who has helped build and improve **Forge Wisper**!
       </a><br />
       <sub>Native macOS Support & Packaging</sub>
     </td>
+    <td align="center">
+      <a href="https://github.com/TechincalExpo">
+        <img src="https://github.com/TechincalExpo.png" width="70px;" alt="Arsalan Khan" style="border-radius: 50%;" /><br />
+        <sub><b>Arsalan Khan</b></sub>
+      </a><br />
+      <sub>Local Model Providers & Windows Tooling</sub>
+    </td>
   </tr>
 </table>
 

@@ -9,6 +9,14 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.18] - 2026-09-13
+
+### Developer Experience
+
+- Made the Windows native launcher discover installed MSVC, LLVM/libclang,
+  CMake, and Vulkan SDK versions instead of depending on one machine's paths.
+- Added actionable prerequisite messages for missing Windows build tools.
+
 ## [0.3.16] - 2026-09-13
 
 ### Developer Experience

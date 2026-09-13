@@ -23,12 +23,12 @@ $env:LIBCLANG_PATH = "C:\Program Files\LLVM\bin"
 $env:Path = "C:\Program Files\CMake\bin;C:\Program Files\LLVM\bin;$env:USERPROFILE\.cargo\bin;$env:Path"
 ```
 
-The Windows launcher automatically discovers the newest Vulkan SDK under
-`C:\VulkanSDK`, validates `glslc.exe`, and uses `C:\t` as a short Cargo target
-directory. This external short path is intentional: a `subst` drive pointing
-at a deep repository checkout is still too long for MSBuild's nested Vulkan
-shader-generator paths. `C:\t` contains generated build output only and can be
-deleted safely when no Cargo process is running.
+The Windows launcher discovers Vulkan SDK, `glslc.exe`, CMake, LLVM/libclang,
+and the latest installed MSVC tools dynamically. It uses `C:\t` as a short
+Cargo target directory. This external short path is intentional: a `subst`
+drive pointing at a deep repository checkout is still too long for MSBuild's
+nested Vulkan shader-generator paths. `C:\t` contains generated build output
+only and can be deleted safely when no Cargo process is running.
 
 If an earlier direct `pnpm tauri:dev` run created a large repository `target`
 directory in addition to `C:\t`, close all Cargo/Tauri processes and run

@@ -187,8 +187,10 @@ forge-wisper/
    ```
 
    Visual Studio Build Tools 2022 with the C++ workload and Windows SDK are
-   also required. The launcher discovers installed versions; do not copy these
-   toolchains into the repository.
+   also required. The launcher discovers installed versions of MSVC, LLVM,
+   CMake, and Vulkan SDK; do not copy these toolchains into the repository.
+   If a component is missing, the launcher prints the exact installation
+   command or prerequisite to install.
 
    The Vulkan native build uses `C:\t` as a short Cargo target directory to
    avoid Windows MSBuild path limits. This is generated build cache only. The

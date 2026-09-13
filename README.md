@@ -6,7 +6,7 @@
 
 **Next-Generation Open-Source Voice-to-Structured-Text Desktop Application**
 
-**Current version:** `0.2.1`
+**Current version:** `0.4.0`
 
 *Speak naturally. Release. Receive clean, formatted, verified text directly at your cursor.*
 
@@ -170,16 +170,16 @@ forge-wisper/
     pnpm tauri:dev
     ```
 
-   `pnpm tauri:dev` routes to the platform-specific development environment.
-   On Windows it uses the native Local Whisper launcher so MSVC, LLVM/libclang,
-   CMake, Vulkan SDK, and the short Cargo target directory are configured
-   automatically. The explicit Windows command remains available:
+   `pnpm tauri:dev` starts the platform-specific development environment.
+   On Windows, the launcher configures the native build tools and short-path
+   Cargo target directory automatically. Use the explicit Windows command when
+   needed:
 
    ```powershell
    pnpm tauri:dev:windows
    ```
 
-   Windows GPU development prerequisites:
+   Install the Windows GPU development prerequisites:
 
    ```powershell
    winget install Kitware.CMake
@@ -188,40 +188,18 @@ forge-wisper/
    ```
 
    Visual Studio Build Tools 2022 with the C++ workload and Windows SDK are
-   also required. The launcher discovers installed versions of MSVC, LLVM,
-   CMake, and Vulkan SDK; do not copy these toolchains into the repository.
-   If a component is missing, the launcher prints the exact installation
-   command or prerequisite to install.
+   also required. The launcher detects installed toolchains and reports the
+   exact prerequisite to install when something is missing.
 
-   The Vulkan native build uses `C:\t` as a short Cargo target directory to
-   avoid Windows MSBuild path limits. This is generated build cache only. The
-   application source and Cargo watch paths will still appear in logs under the
-   repository path, for example `D:\CODING\WindowsApp\forge-wisper`, while
-   compiled artifacts may appear under `C:\t`. These are two different path
-   roles, not two copies of the application:
-
-   ```text
-   D:\CODING\WindowsApp\forge-wisper
-   → source files, Cargo workspace, watched crates, project target history
-
-   C:\t
-   → active short-path Cargo/Vulkan build cache used by Windows development
-   ```
-
-   Older direct builds can also leave stale artifacts under the repository
-   `target` folder. Cargo intentionally reuses build artifacts between runs,
-   so the cache can grow when dependencies, compiler settings, or native Vulkan
-   build hashes change. Do not clean it before every run; that would force a
-   multi-minute native rebuild each time. Clean generated caches only when disk
-   space requires it or after a native build configuration change.
-   To remove both generated caches safely, close Forge Wisper and run:
+   Windows development uses `C:\t` as a short-path Cargo build cache to avoid
+   MSBuild path limits. Clean both generated build caches safely with:
 
    ```powershell
    pnpm clean:windows-builds
    ```
 
-   Type `CLEAN` when prompted. This does not remove source files, downloaded
-   Local Whisper models, settings, history, or credentials.
+   Type `CLEAN` when prompted. This removes generated caches only, not source
+   files, models, settings, history, or credentials.
 
 4. **Build Production Installer / Packages**:
    ```bash
@@ -269,7 +247,9 @@ Contributions are welcome! If you'd like to help improve Forge Wisper:
 4. Push to the branch (`git push origin feature/amazing-feature`).
 5. Open a Pull Request.
 
-All development follows focused feature/fix branches, mandatory tests and lint gates, synchronized version bumps, and changelog updates. Read [`AGENTS.md`](AGENTS.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md) before making changes.
+All development follows focused feature/fix branches, mandatory tests and lint
+gates, synchronized version bumps, and changelog updates. Read
+[`CONTRIBUTING.md`](CONTRIBUTING.md) before making changes.
 
 ---
 

@@ -17,6 +17,7 @@ reqwest = { workspace = true }
 directories = { workspace = true }
 hound = { workspace = true }
 whisper-rs = { version = "0.16.0", default-features = false, features = ["tracing_backend"] }
+transcribe-rs = { version = "0.2.9", default-features = false, features = ["parakeet"] }
 
 [target.'cfg(windows)'.dependencies]
 whisper-rs = { version = "0.16.0", features = ["vulkan"] }

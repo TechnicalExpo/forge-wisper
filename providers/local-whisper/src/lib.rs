@@ -17,6 +17,8 @@ use tracing::{debug, info, warn};
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 use sha2::{Digest, Sha256};
 
+pub mod parakeet;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelDownloadProgress {
     pub model_id: String,
@@ -192,6 +194,17 @@ impl ModelManager {
         }
 
         None
+    }
+
+    pub fn find_model_directory(&self, model_id: &str) -> Result<PathBuf, ProviderError> {
+        let candidates = [
+            self.models_dir.join(model_id),
+            Path::new("models").join(model_id),
+        ];
+        candidates
+            .into_iter()
+            .find(|path| path.is_dir())
+            .ok_or_else(|| ProviderError::ModelError(format!("Model directory '{}' not found", model_id)))
     }
 
     pub fn get_models_dir(&self) -> &Path {

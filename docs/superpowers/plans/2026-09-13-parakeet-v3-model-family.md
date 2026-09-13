@@ -18,7 +18,7 @@
 - Do not log raw audio, transcript text, API keys, or model secrets.
 - Do not hold settings/storage mutexes across inference or `.await` points.
 - Run `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `pnpm --filter @forge-wisper/desktop build`, and `cargo fmt --all -- --check` before merge.
-- Preserve the existing `0.3.20` release version until implementation is complete; then apply the required patch/minor bump consistently across all manifests and changelog.
+- Preserve the existing release version until implementation is complete; this feature uses synchronized version `0.4.0` across all manifests and changelog.
 
 ---
 
@@ -33,11 +33,11 @@
 - Produce serializable `ModelFamily` and `ModelFormat` values for `whisper` and `parakeet`.
 - Extend shared model capability metadata without changing existing Whisper model IDs or provider IDs.
 
-- [ ] **Step 1: Write failing serialization and defaulting tests**
+- [x] **Step 1: Write failing serialization and defaulting tests**
 
 Add tests asserting that `ModelFamily::Whisper` serializes as `"whisper"`, `ModelFamily::Parakeet` serializes as `"parakeet"`, and legacy metadata defaults to Whisper when the family field is absent.
 
-- [ ] **Step 2: Run the focused tests and verify failure**
+- [x] **Step 2: Run the focused tests and verify failure**
 
 Run:
 
@@ -47,11 +47,11 @@ cargo test -p forge-transcription model_family
 
 Expected: compile/test failure because the new family types are not defined.
 
-- [ ] **Step 3: Add the shared family and format types**
+- [x] **Step 3: Add the shared family and format types**
 
 Implement serde-compatible enums with explicit lowercase names and `Default` for `ModelFamily::Whisper`. Add family/format fields to model metadata types using `#[serde(default)]` where persisted legacy data requires compatibility.
 
-- [ ] **Step 4: Run the focused tests and workspace formatting**
+- [x] **Step 4: Run the focused tests and workspace formatting**
 
 Run:
 
@@ -62,7 +62,7 @@ cargo fmt --all -- --check
 
 Expected: tests pass and formatting is clean.
 
-- [ ] **Step 5: Commit the shared contract**
+- [x] **Step 5: Commit the shared contract**
 
 ```powershell
 git add crates/transcription/src/lib.rs providers/local-whisper/src/lib.rs

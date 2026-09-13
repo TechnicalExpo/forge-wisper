@@ -30,30 +30,20 @@ pub struct TranscriptionOptions {
     pub prompt: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ModelFamily {
+    #[default]
     Whisper,
     Parakeet,
 }
 
-impl Default for ModelFamily {
-    fn default() -> Self {
-        Self::Whisper
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ModelFormat {
+    #[default]
     GgmlBin,
     OnnxDirectory,
-}
-
-impl Default for ModelFormat {
-    fn default() -> Self {
-        Self::GgmlBin
-    }
 }
 
 pub const SUPPORTED_LANGUAGES: &[(&str, &str)] = &[

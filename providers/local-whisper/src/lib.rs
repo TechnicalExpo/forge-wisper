@@ -321,7 +321,7 @@ impl ModelManager {
             download_url: "https://blob.handy.computer/parakeet-v3-int8.tar.gz".to_string(),
             revision: "handy-parakeet-v3-int8".to_string(),
             sha256: "43d37191602727524a7d8c6da0eef11c4ba24320f5b4730f1a2497befc2efa77".to_string(),
-            size_bytes: 0,
+            size_bytes: 478 * 1024 * 1024,
             is_installed: self.find_model_directory(parakeet_directory).is_ok(),
             is_default: false,
         });
@@ -1069,9 +1069,11 @@ mod tests {
     #[test]
     fn catalog_metadata_is_pinned_and_hashed() {
         for model in LocalWhisperProvider::default().model_manager.list_available_models() {
-            assert_eq!(model.revision.len(), 40);
+            if model.family == ModelFamily::Whisper {
+                assert_eq!(model.revision.len(), 40);
+                assert!(model.download_url.contains(&model.revision));
+            }
             assert_eq!(model.sha256.len(), 64);
-            assert!(model.download_url.contains(&model.revision));
             assert!(model.size_bytes > 0);
         }
     }

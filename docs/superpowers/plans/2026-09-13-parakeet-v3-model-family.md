@@ -311,3 +311,12 @@ Confirm no model weights, raw audio, credentials, generated build output, or unr
 - [ ] **Step 6: Commit any required verification-only fix and report readiness**
 
 Use a focused Conventional Commit only if verification requires a source correction. Otherwise leave the branch ready for review with all checks recorded.
+
+---
+
+## Current Implementation Status
+
+- Runtime dependency, provider boundary, model-family metadata, Parakeet V3 catalog entry, staged archive validation, settings selection, UI state, documentation, and version `0.4.0` are implemented.
+- Automated `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, desktop frontend build, and `git diff --check` pass.
+- `cargo fmt --all -- --check` still reports pre-existing formatting drift in unrelated files; those files were not reformatted.
+- Remaining validation is manual real-model validation using `FORGE_PARAKEET_MODEL_PATH` or the verified archive URL, followed by normal merge/PR integration.

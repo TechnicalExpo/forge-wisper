@@ -9,6 +9,11 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+### Local Models
+
+- Added Parakeet V3 Int8 as a separate CPU/ONNX local model family alongside Whisper.
+- Added explicit model-family selection, validated directory installation, and automatic language detection behavior for Parakeet.
+
 ## [0.3.20] - 2026-09-13
 
 ### UI

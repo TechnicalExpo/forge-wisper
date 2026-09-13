@@ -30,7 +30,7 @@
                 ↓
     🎙️ Speak Naturally (with pauses, corrections, or list items)
                 ↓
-    ⚡ Speech Recognition (Groq LPUs / Offline Local Whisper)
+    ⚡ Speech Recognition (Groq LPUs / Offline Whisper or Parakeet)
                 ↓
     🧠 Rule-Based Cleaner (Filler Removal + Intent Correction)
                 ↓
@@ -67,6 +67,7 @@
 
 - **⚡ Blazing Fast Cloud Transcription (Groq Whisper)**: Sub-second audio processing with `whisper-large-v3-turbo` powered by Groq LPUs. API keys are safely stored in your native OS Keyring (**Windows Credential Vault & macOS Keychain**).
 - **🔒 Private & Offline Local Whisper**: Download a compatible GGML model once, then run CPU transcription locally without sending audio to the cloud.
+- **🦜 Local Parakeet V3**: Optionally download the Parakeet V3 Int8 ONNX model for CPU transcription with automatic language detection. Audio remains on-device.
 - **🍎 Native macOS Compatibility**: CoreAudio NaN-sanitized recording, Apple microphone permission integration (`Info.plist`), and universal binary packaging.
 - **🚀 Auto-Start on System Boot**: Automatically launches in the background on startup, instantly ready for your global hotkey.
 - **🧠 Intelligent Rule-Based Voice Cleaner**:
@@ -254,7 +255,7 @@ pnpm --filter @forge-wisper/desktop build
 
 - **No Cloud Audio Storage**: Audio recordings are processed in memory and discarded immediately after transcription.
 - **Secure Key Storage**: API credentials (such as Groq keys) are stored using native OS secret vaults (Windows Credential Manager, macOS Keychain, Linux Secret Service) via the `keyring` crate.
-- **Local-First Processing**: Groq Cloud mode sends recorded audio to Groq for transcription. Local Whisper mode keeps inference, cleanup, verification, and output on the device after model download.
+- **Local-First Processing**: Groq Cloud mode sends recorded audio to Groq for transcription. Local Whisper and Local Parakeet modes keep inference, cleanup, verification, and output on the device after model download.
 
 ---
 

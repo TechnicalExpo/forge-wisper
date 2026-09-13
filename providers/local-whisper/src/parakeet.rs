@@ -71,7 +71,7 @@ impl LocalParakeetProvider {
             return Ok(path);
         }
 
-        let path = self.model_manager.find_model_directory(PARAKEET_MODEL_ID)?;
+        let path = self.model_manager.find_model_directory("parakeet-tdt-0.6b-v3-int8")?;
         validate_model_directory(&path)?;
         Ok(path)
     }

@@ -13,6 +13,7 @@ export type ProcessingState =
 
 export type FormattingMode = "Raw" | "Clean" | "Structured" | "Smart";
 export type ComputeDevice = "cpu" | "gpu";
+export type ModelFamily = "whisper" | "parakeet";
 export type LanguageCode = "auto" | "en" | "ur" | "es" | "fr" | "de" | "it" | "pt" | "zh" | "ja" | "ko" | "ar" | "hi" | "ru" | "nl" | "tr" | "pl";
 
 export type RetentionPolicy = "Forever" | "Days30" | "Days7" | "Off";
@@ -20,6 +21,7 @@ export type RetentionPolicy = "Forever" | "Days30" | "Days7" | "Off";
 export interface AppSettings {
   provider: string;
   model: string;
+  local_model_family: ModelFamily;
   compute_device: ComputeDevice;
   language: LanguageCode;
   microphone: string | null;
@@ -63,6 +65,8 @@ export interface LocalModelInfo {
   download_url: string;
   is_installed: boolean;
   is_default: boolean;
+  family: ModelFamily;
+  format: "ggml-bin" | "onnx-directory";
 }
 
 export interface HardwareRecommendation {

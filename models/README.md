@@ -1,6 +1,18 @@
-# 🧠 Local Whisper Models Directory
+# 🧠 Local Models Directory
 
-This directory stores offline GGML / GGUF model binary weights for Forge Wisper's **Local Whisper** offline speech recognition engine.
+This directory stores offline model files for Forge Wisper's local speech recognition engines.
+
+## Supported Families
+
+- **Whisper** uses GGML `.bin` files through the existing CPU/Vulkan runtime.
+- **Parakeet V3 Int8** uses the ONNX directory `parakeet-tdt-0.6b-v3-int8` through the CPU-only `transcribe-rs` runtime. It performs automatic language detection; the manual recognition-language setting does not apply.
+
+Parakeet V3 is downloaded from Handy's public mirror:
+
+```text
+https://blob.handy.computer/parakeet-v3-int8.tar.gz
+SHA-256: 43d37191602727524a7d8c6da0eef11c4ba24320f5b4730f1a2497befc2efa77
+```
 
 ---
 
@@ -30,6 +42,10 @@ If you are deploying Forge Wisper in an offline or airgapped environment, you ca
 - Source: [ggerganov/whisper.cpp on HuggingFace](https://huggingface.co/ggerganov/whisper.cpp/tree/main)
 - Place the downloaded `ggml-*.bin` file directly inside this directory or in your OS app data directory (`%APPDATA%\forge\ForgeWisper\data\models` on Windows).
 - In-app downloads are pinned to the Hugging Face model revision and verified against the catalog SHA-256 before activation. Manually installed files are discovered by filename but are not treated as catalog-verified downloads.
+
+For Parakeet V3, extract the archive so the required files are inside
+`parakeet-tdt-0.6b-v3-int8/`: `encoder-model.int8.onnx`,
+`decoder_joint-model.int8.onnx`, `nemo128.onnx`, and `vocab.txt`.
 
 ---
 

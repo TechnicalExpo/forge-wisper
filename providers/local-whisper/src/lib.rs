@@ -196,15 +196,15 @@ impl ModelManager {
         None
     }
 
-    pub fn find_model_directory(&self, model_id: &str) -> Result<PathBuf, ProviderError> {
+    pub fn find_model_directory(&self, directory_name: &str) -> Result<PathBuf, ProviderError> {
         let candidates = [
-            self.models_dir.join(model_id),
-            Path::new("models").join(model_id),
+            self.models_dir.join(directory_name),
+            Path::new("models").join(directory_name),
         ];
         candidates
             .into_iter()
             .find(|path| path.is_dir())
-            .ok_or_else(|| ProviderError::ModelError(format!("Model directory '{}' not found", model_id)))
+            .ok_or_else(|| ProviderError::ModelError(format!("Model directory '{}' not found", directory_name)))
     }
 
     pub fn get_models_dir(&self) -> &Path {
@@ -276,7 +276,7 @@ impl ModelManager {
             ),
         ];
 
-        catalog
+        let mut models: Vec<LocalModelInfo> = catalog
             .into_iter()
             .map(|(id, name, filename, size_mb, ram_mb, _url, sha256, is_def)| {
                 let is_installed = self.find_model_file(filename).is_some();
@@ -307,13 +307,34 @@ impl ModelManager {
                     is_default: is_def,
                 }
             })
-            .collect()
+            .collect();
+
+        let parakeet_directory = "parakeet-tdt-0.6b-v3-int8";
+        models.push(LocalModelInfo {
+            id: "parakeet-v3-int8".to_string(),
+            name: "Parakeet V3 Int8".to_string(),
+            family: ModelFamily::Parakeet,
+            format: ModelFormat::OnnxDirectory,
+            filename: parakeet_directory.to_string(),
+            size_mb: 478,
+            ram_estimate_mb: 1200,
+            download_url: "https://blob.handy.computer/parakeet-v3-int8.tar.gz".to_string(),
+            revision: "handy-parakeet-v3-int8".to_string(),
+            sha256: "43d37191602727524a7d8c6da0eef11c4ba24320f5b4730f1a2497befc2efa77".to_string(),
+            size_bytes: 0,
+            is_installed: self.find_model_directory(parakeet_directory).is_ok(),
+            is_default: false,
+        });
+        models
     }
 
     /// Auto-picks the best available local model that is already downloaded
     pub fn auto_pick_installed_model(&self) -> Option<LocalModelInfo> {
         let models = self.list_available_models();
-        let installed: Vec<LocalModelInfo> = models.into_iter().filter(|m| m.is_installed).collect();
+        let installed: Vec<LocalModelInfo> = models
+            .into_iter()
+            .filter(|m| m.family == ModelFamily::Whisper && m.is_installed)
+            .collect();
 
         if installed.is_empty() {
             return None;
@@ -347,6 +368,10 @@ impl ModelManager {
             .into_iter()
             .find(|m| m.id == model_id)
             .ok_or_else(|| ProviderError::ModelError(format!("Model ID '{}' not recognized", model_id)))?;
+
+        if target.format == ModelFormat::OnnxDirectory {
+            return self.download_directory_model(&target, progress).await;
+        }
 
         let dest_path = self.models_dir.join(&target.filename);
         let part_path = self.models_dir.join(format!("{}.part", target.filename));
@@ -505,6 +530,76 @@ impl ModelManager {
         Ok(dest_path)
     }
 
+    async fn download_directory_model<F>(
+        &self,
+        target: &LocalModelInfo,
+        mut progress: F,
+    ) -> Result<PathBuf, ProviderError>
+    where
+        F: FnMut(u64, u64) + Send + 'static,
+    {
+        let archive_path = self.models_dir.join(format!("{}.part.tar.gz", target.id));
+        let extract_path = self.models_dir.join(format!("{}.part", target.filename));
+        let destination = self.models_dir.join(&target.filename);
+        let response = Client::new()
+            .get(&target.download_url)
+            .send()
+            .await
+            .map_err(|error| ProviderError::NetworkError(error.to_string()))?;
+        if !response.status().is_success() {
+            return Err(ProviderError::NetworkError(format!(
+                "Failed to download model (HTTP {})",
+                response.status()
+            )));
+        }
+        let total = response.content_length().unwrap_or(target.size_mb * 1024 * 1024);
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|error| ProviderError::NetworkError(error.to_string()))?;
+        progress(bytes.len() as u64, total);
+        std::fs::write(&archive_path, &bytes)
+            .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+        verify_model_hash(&archive_path, &target.sha256)?;
+
+        let _ = std::fs::remove_dir_all(&extract_path);
+        std::fs::create_dir_all(&extract_path)
+            .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+        let archive = File::open(&archive_path)
+            .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+        let decoder = flate2::read::GzDecoder::new(archive);
+        let mut tar = tar::Archive::new(decoder);
+        for entry in tar
+            .entries()
+            .map_err(|error| ProviderError::ModelError(error.to_string()))?
+        {
+            let mut entry = entry.map_err(|error| ProviderError::ModelError(error.to_string()))?;
+            let path = entry
+                .path()
+                .map_err(|error| ProviderError::ModelError(error.to_string()))?
+                .into_owned();
+            if path.is_absolute() || path.components().any(|component| matches!(component, std::path::Component::ParentDir)) {
+                return Err(ProviderError::ModelError("Model archive contains an unsafe path".to_string()));
+            }
+            entry
+                .unpack(&extract_path)
+                .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+        }
+
+        let candidate = if extract_path.join(&target.filename).is_dir() {
+            extract_path.join(&target.filename)
+        } else {
+            extract_path.clone()
+        };
+        parakeet::validate_model_directory(&candidate)?;
+        let _ = std::fs::remove_dir_all(&destination);
+        std::fs::rename(&candidate, &destination)
+            .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+        let _ = std::fs::remove_dir_all(&extract_path);
+        let _ = std::fs::remove_file(&archive_path);
+        Ok(destination)
+    }
+
     pub fn delete_model(&self, model_id: &str) -> Result<bool, ProviderError> {
         let models = self.list_available_models();
         let target = models
@@ -512,7 +607,11 @@ impl ModelManager {
             .find(|m| m.id == model_id)
             .ok_or_else(|| ProviderError::ModelError(format!("Model ID '{}' not found", model_id)))?;
 
-        if let Some(existing_path) = self.find_model_file(&target.filename) {
+        if target.format == ModelFormat::OnnxDirectory {
+            let path = self.find_model_directory(&target.filename)?;
+            std::fs::remove_dir_all(path).map_err(|e| ProviderError::ModelError(e.to_string()))?;
+            Ok(true)
+        } else if let Some(existing_path) = self.find_model_file(&target.filename) {
             remove_file(existing_path).map_err(|e| ProviderError::ModelError(e.to_string()))?;
             Ok(true)
         } else {
@@ -547,6 +646,17 @@ fn verify_model_file(path: &Path, expected_size: u64, expected_sha256: &str) -> 
         ));
     }
 
+    Ok(())
+}
+
+fn verify_model_hash(path: &Path, expected_sha256: &str) -> Result<(), ProviderError> {
+    let mut file = File::open(path).map_err(|error| ProviderError::ModelError(error.to_string()))?;
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher).map_err(|error| ProviderError::ModelError(error.to_string()))?;
+    let actual = format!("{:x}", hasher.finalize());
+    if actual != expected_sha256 {
+        return Err(ProviderError::ModelError("Model archive integrity verification failed".to_string()));
+    }
     Ok(())
 }
 
@@ -919,7 +1029,7 @@ mod tests {
         local_compute_device_info, sha256_file, verify_model_file, LocalWhisperProvider,
         ModelManager, WhisperContextKey,
     };
-    use forge_transcription::{AudioData, TranscriptionOptions, TranscriptionProvider};
+    use forge_transcription::{AudioData, ModelFamily, ModelFormat, TranscriptionOptions, TranscriptionProvider};
     use std::collections::HashMap;
     use std::fs;
     use std::path::PathBuf;
@@ -964,6 +1074,16 @@ mod tests {
             assert!(model.download_url.contains(&model.revision));
             assert!(model.size_bytes > 0);
         }
+    }
+
+    #[test]
+    fn parakeet_catalog_entry_uses_verified_directory_metadata() {
+        let models = LocalWhisperProvider::default().model_manager.list_available_models();
+        let parakeet = models.iter().find(|model| model.id == "parakeet-v3-int8").unwrap();
+        assert_eq!(parakeet.family, ModelFamily::Parakeet);
+        assert_eq!(parakeet.format, ModelFormat::OnnxDirectory);
+        assert_eq!(parakeet.filename, "parakeet-tdt-0.6b-v3-int8");
+        assert_eq!(parakeet.sha256.len(), 64);
     }
 
     #[test]

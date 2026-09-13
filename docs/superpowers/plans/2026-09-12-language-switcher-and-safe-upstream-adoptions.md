@@ -53,8 +53,9 @@
   the Vulkan launcher.
 - [x] Adopt the isolated fix that applies the persisted autostart preference
   instead of forcing startup registration on every launch.
-- [ ] Verify Windows normal launch, autostart launch, minimized launch, and
-  recorder window visibility manually.
+- [ ] Verify Windows autostart launch manually.
+- [x] Verify silent/background normal launch, minimized/close-to-tray behavior,
+  and recorder window pill visibility manually.
 
 ### Groq Request Review
 
@@ -111,6 +112,11 @@
 
 - Merged release: `0.3.10`.
 - Language switcher: complete.
+- Language switcher behavior confirmed: the selected language is a speech
+  recognition hint, not a translation target; `auto` delegates detection to the
+  provider.
 - Dynamic snippet editing: complete.
 - Normal Windows `pnpm tauri:dev`: routed through the existing Windows launcher.
-- Next recommended task: startup and recorder-window polish review.
+- Startup and recorder-window review: complete except for manual autostart
+  validation.
+- Next recommended task: Groq request review tests.

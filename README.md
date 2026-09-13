@@ -151,6 +151,12 @@ forge-wisper/
 - **[Node.js 18+](https://nodejs.org/)** and **[pnpm](https://pnpm.io/)** (`npm install -g pnpm`)
 - **[Rust](https://rustup.rs/) (1.78+)** with MSVC Build Tools on Windows
 - **[Tauri v2 CLI](https://tauri.app/)** (`cargo install tauri-cli --version "^2.0.0"`)
+- **Windows native builds**: MSVC, LLVM/libclang, CMake, and the Vulkan SDK.
+  The `C:\t` directory is the short-path Cargo target directory used to avoid
+  Windows path limits; it can grow large over time and may be manually deleted
+  when disk space is low. The build cache also lives in the repository's
+  `target` directory, which may be removed the same way. Do not copy the
+  toolchains into the repository.
 
 ### Installation & Development
 
@@ -191,8 +197,7 @@ forge-wisper/
    also required. The launcher detects installed toolchains and reports the
    exact prerequisite to install when something is missing.
 
-   Windows development uses `C:\t` as a short-path Cargo build cache to avoid
-   MSBuild path limits. Clean both generated build caches safely with:
+   To remove generated build caches safely, close Forge Wisper and run:
 
    ```powershell
    pnpm clean:windows-builds

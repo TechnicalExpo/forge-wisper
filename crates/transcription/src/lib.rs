@@ -38,12 +38,30 @@ pub enum ModelFamily {
     Parakeet,
 }
 
+impl std::fmt::Display for ModelFamily {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Whisper => write!(f, "whisper"),
+            Self::Parakeet => write!(f, "parakeet"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ModelFormat {
     #[default]
     GgmlBin,
     OnnxDirectory,
+}
+
+impl std::fmt::Display for ModelFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::GgmlBin => write!(f, "ggml-bin"),
+            Self::OnnxDirectory => write!(f, "onnx-directory"),
+        }
+    }
 }
 
 pub const SUPPORTED_LANGUAGES: &[(&str, &str)] = &[

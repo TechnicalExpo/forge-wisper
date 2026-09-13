@@ -73,5 +73,7 @@ export interface HardwareRecommendation {
   logical_cores: number;
   estimated_ram_gb: number;
   recommended_model_id: string;
+  recommended_model_name: string;
+  recommended_family: ModelFamily;
   reason: string;
 }

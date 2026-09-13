@@ -52,6 +52,8 @@ pub struct HardwareRecommendation {
     pub logical_cores: usize,
     pub estimated_ram_gb: u32,
     pub recommended_model_id: String,
+    pub recommended_model_name: String,
+    pub recommended_family: ModelFamily,
     pub reason: String,
 }
 
@@ -792,9 +794,11 @@ impl HardwareDetector {
 
         let ram_gb = get_system_ram_gb();
 
-        let (rec_model, reason) = if ram_gb >= 16 && logical_cores >= 8 {
+        let (rec_model_id, rec_model_name, rec_family, reason) = if ram_gb >= 16 && logical_cores >= 8 {
             (
                 "large-v3-turbo",
+                "Whisper Large v3 Turbo",
+                ModelFamily::Whisper,
                 format!(
                     "High-performance hardware detected ({} cores, {} GB RAM); Whisper Large v3 Turbo recommended.",
                     logical_cores, ram_gb
@@ -802,15 +806,19 @@ impl HardwareDetector {
             )
         } else if ram_gb >= 8 && logical_cores >= 4 {
             (
-                "small",
+                "parakeet-v3-int8",
+                "Parakeet V3 Int8",
+                ModelFamily::Parakeet,
                 format!(
-                    "Balanced hardware detected ({} cores, {} GB RAM); Whisper Small recommended for balanced latency and high accuracy.",
+                    "Balanced hardware detected ({} cores, {} GB RAM); Parakeet V3 Int8 recommended for fast local dictation with automatic language detection.",
                     logical_cores, ram_gb
                 ),
             )
         } else {
             (
                 "base",
+                "Whisper Base",
+                ModelFamily::Whisper,
                 format!(
                     "Standard hardware detected ({} cores, {} GB RAM); Whisper Base recommended for smooth latency.",
                     logical_cores, ram_gb
@@ -824,13 +832,17 @@ impl HardwareDetector {
             estimated_ram_gb = ram_gb,
             gpu_acceleration = false,
             backend = "cpu",
-            "Local Whisper hardware recommendation detected"
+            recommended_model_id = rec_model_id,
+            recommended_family = %rec_family,
+            "Local model hardware recommendation detected"
         );
 
         HardwareRecommendation {
             logical_cores,
             estimated_ram_gb: ram_gb,
-            recommended_model_id: rec_model.to_string(),
+            recommended_model_id: rec_model_id.to_string(),
+            recommended_model_name: rec_model_name.to_string(),
+            recommended_family: rec_family,
             reason,
         }
     }

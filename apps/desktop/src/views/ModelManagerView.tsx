@@ -86,14 +86,14 @@ export const ModelManagerView: React.FC = () => {
         });
       }
 
-      // Auto-pick: If user is using local-whisper and active model is not downloaded, auto-select installed model
+      // Auto-pick only among models from the currently selected local family.
       if (s.provider === "local-whisper") {
-        const activeInstalled = m.find((item) => item.id === s.model && item.is_installed);
+        const activeInstalled = m.find((item) => item.id === s.model && item.family === s.local_model_family && item.is_installed);
         if (!activeInstalled) {
-          const firstInstalled = m.find((item) => item.is_installed);
+          const firstInstalled = m.find((item) => item.family === s.local_model_family && item.is_installed);
           if (firstInstalled) {
-            const updated = { ...s, model: firstInstalled.id };
-            await api.updateSettings({ model: firstInstalled.id });
+            const updated = { ...s, model: firstInstalled.id, local_model_family: firstInstalled.family };
+            await api.updateSettings({ model: firstInstalled.id, local_model_family: firstInstalled.family });
             setAppSettings(updated);
           }
         }
@@ -125,8 +125,9 @@ export const ModelManagerView: React.FC = () => {
           ...settings,
           provider: "local-whisper",
           model: id,
+          local_model_family: models.find((model) => model.id === id)?.family ?? "whisper",
         };
-        await api.updateSettings({ provider: "local-whisper", model: id });
+        await api.updateSettings({ provider: "local-whisper", model: id, local_model_family: updated.local_model_family });
         setAppSettings(updated);
       }
     } catch (e) {
@@ -159,8 +160,9 @@ export const ModelManagerView: React.FC = () => {
         ...settings,
         provider: "local-whisper",
         model: modelId,
+        local_model_family: models.find((model) => model.id === modelId)?.family ?? "whisper",
       };
-      await api.updateSettings({ provider: "local-whisper", model: modelId });
+      await api.updateSettings({ provider: "local-whisper", model: modelId, local_model_family: updated.local_model_family });
       setAppSettings(updated);
     } catch (e) {
       console.error(e);
@@ -181,6 +183,8 @@ export const ModelManagerView: React.FC = () => {
         return { label: "Turbo + Max Accuracy", color: "text-[var(--accent)] bg-[var(--accent-subtle)] border-[var(--accent-border)]" };
       case "large-v3":
         return { label: "Studio Precision", color: "text-[var(--text-primary)] bg-[var(--surface-elevated)] border-[var(--border)]" };
+      case "parakeet-v3-int8":
+        return { label: "Fast Local", color: "text-[var(--success)] bg-[var(--success-bg)] border-[var(--success-border)]" };
       default:
         return { label: "General", color: "text-[var(--text-secondary)] bg-[var(--surface-elevated)] border-[var(--border)]" };
     }
@@ -192,10 +196,10 @@ export const ModelManagerView: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-[18px] font-medium text-[var(--text-primary)] tracking-tight">
-            Local Whisper Models
+            Local Models
           </h2>
           <p className="text-[13px] text-[var(--text-secondary)]">
-            Download and manage GGML model binaries for 100% offline transcription.
+            Download and manage offline transcription model families.
           </p>
         </div>
 
@@ -238,7 +242,7 @@ export const ModelManagerView: React.FC = () => {
             <div className="flex items-center gap-2 self-start md:self-center shrink-0 pl-9 md:pl-0">
               <span className="text-[12px] text-[var(--text-muted)]">Recommended:</span>
               <span className="px-2.5 py-1 rounded-[6px] bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent-border)] text-[12px] font-mono font-medium">
-                Whisper {rec.recommended_model_id}
+                {rec.recommended_model_name}
               </span>
             </div>
           </div>
@@ -339,7 +343,7 @@ export const ModelManagerView: React.FC = () => {
                           ? "Verifying model..."
                           : downloadProgress[model.id]?.phase === "starting"
                             ? "Starting download..."
-                            : "Downloading binary..."}
+                            : model.format === "onnx-directory" ? "Downloading model archive..." : "Downloading binary..."}
                       </span>
                       <span className="text-[var(--text-secondary)]">
                         {downloadProgress[model.id]?.phase === "starting"
@@ -392,7 +396,7 @@ export const ModelManagerView: React.FC = () => {
                     className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 btn-primary text-[13px] font-medium transition-all cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Download Binary ({model.size_mb} MB)</span>
+                    <span>Download Model ({model.size_mb} MB)</span>
                   </button>
                 )}
               </div>

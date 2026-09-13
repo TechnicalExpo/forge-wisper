@@ -30,6 +30,40 @@ pub struct TranscriptionOptions {
     pub prompt: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ModelFamily {
+    #[default]
+    Whisper,
+    Parakeet,
+}
+
+impl std::fmt::Display for ModelFamily {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Whisper => write!(f, "whisper"),
+            Self::Parakeet => write!(f, "parakeet"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ModelFormat {
+    #[default]
+    GgmlBin,
+    OnnxDirectory,
+}
+
+impl std::fmt::Display for ModelFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::GgmlBin => write!(f, "ggml-bin"),
+            Self::OnnxDirectory => write!(f, "onnx-directory"),
+        }
+    }
+}
+
 pub const SUPPORTED_LANGUAGES: &[(&str, &str)] = &[
     ("auto", "Auto Detect"),
     ("en", "English"),
@@ -73,7 +107,21 @@ impl Default for TranscriptionOptions {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_language;
+    use super::{normalize_language, ModelFamily, ModelFormat};
+
+    #[test]
+    fn model_family_and_format_use_stable_serialized_values() {
+        assert_eq!(serde_json::to_string(&ModelFamily::Whisper).unwrap(), "\"whisper\"");
+        assert_eq!(serde_json::to_string(&ModelFamily::Parakeet).unwrap(), "\"parakeet\"");
+        assert_eq!(serde_json::to_string(&ModelFormat::GgmlBin).unwrap(), "\"ggml-bin\"");
+        assert_eq!(serde_json::to_string(&ModelFormat::OnnxDirectory).unwrap(), "\"onnx-directory\"");
+    }
+
+    #[test]
+    fn model_family_defaults_to_whisper_for_legacy_metadata() {
+        let family: ModelFamily = serde_json::from_str("null").unwrap_or_default();
+        assert_eq!(family, ModelFamily::Whisper);
+    }
 
     #[test]
     fn language_codes_are_normalized_and_validated() {

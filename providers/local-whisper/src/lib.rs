@@ -1,13 +1,14 @@
 use async_trait::async_trait;
 use directories::ProjectDirs;
 use forge_transcription::{
-    normalize_language, AudioData, ProviderCapabilities, ProviderError, Transcript, TranscriptionOptions,
-    TranscriptionProvider,
+    normalize_language, AudioData, ModelFamily, ModelFormat, ProviderCapabilities, ProviderError,
+    Transcript, TranscriptionOptions, TranscriptionProvider,
 };
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{create_dir_all, remove_file, File};
+use flate2::read::GzDecoder;
 use std::io::Write;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
@@ -16,6 +17,8 @@ use std::time::Instant;
 use tracing::{debug, info, warn};
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 use sha2::{Digest, Sha256};
+
+pub mod parakeet;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelDownloadProgress {
@@ -29,6 +32,10 @@ pub struct ModelDownloadProgress {
 pub struct LocalModelInfo {
     pub id: String,
     pub name: String,
+    #[serde(default)]
+    pub family: ModelFamily,
+    #[serde(default)]
+    pub format: ModelFormat,
     pub filename: String,
     pub size_mb: u64,
     pub ram_estimate_mb: u64,
@@ -45,6 +52,8 @@ pub struct HardwareRecommendation {
     pub logical_cores: usize,
     pub estimated_ram_gb: u32,
     pub recommended_model_id: String,
+    pub recommended_model_name: String,
+    pub recommended_family: ModelFamily,
     pub reason: String,
 }
 
@@ -190,6 +199,17 @@ impl ModelManager {
         None
     }
 
+    pub fn find_model_directory(&self, directory_name: &str) -> Result<PathBuf, ProviderError> {
+        let candidates = [
+            self.models_dir.join(directory_name),
+            Path::new("models").join(directory_name),
+        ];
+        candidates
+            .into_iter()
+            .find(|path| path.is_dir())
+            .ok_or_else(|| ProviderError::ModelError(format!("Model directory '{}' not found", directory_name)))
+    }
+
     pub fn get_models_dir(&self) -> &Path {
         &self.models_dir
     }
@@ -259,13 +279,15 @@ impl ModelManager {
             ),
         ];
 
-        catalog
+        let mut models: Vec<LocalModelInfo> = catalog
             .into_iter()
             .map(|(id, name, filename, size_mb, ram_mb, _url, sha256, is_def)| {
                 let is_installed = self.find_model_file(filename).is_some();
                 LocalModelInfo {
                     id: id.to_string(),
                     name: name.to_string(),
+                    family: ModelFamily::Whisper,
+                    format: ModelFormat::GgmlBin,
                     filename: filename.to_string(),
                     size_mb,
                     ram_estimate_mb: ram_mb,
@@ -288,13 +310,34 @@ impl ModelManager {
                     is_default: is_def,
                 }
             })
-            .collect()
+            .collect();
+
+        let parakeet_directory = "parakeet-tdt-0.6b-v3-int8";
+        models.push(LocalModelInfo {
+            id: "parakeet-v3-int8".to_string(),
+            name: "Parakeet V3 Int8".to_string(),
+            family: ModelFamily::Parakeet,
+            format: ModelFormat::OnnxDirectory,
+            filename: parakeet_directory.to_string(),
+            size_mb: 478,
+            ram_estimate_mb: 1200,
+            download_url: "https://blob.handy.computer/parakeet-v3-int8.tar.gz".to_string(),
+            revision: "handy-parakeet-v3-int8".to_string(),
+            sha256: "43d37191602727524a7d8c6da0eef11c4ba24320f5b4730f1a2497befc2efa77".to_string(),
+            size_bytes: 478 * 1024 * 1024,
+            is_installed: self.find_model_directory(parakeet_directory).is_ok(),
+            is_default: false,
+        });
+        models
     }
 
     /// Auto-picks the best available local model that is already downloaded
     pub fn auto_pick_installed_model(&self) -> Option<LocalModelInfo> {
         let models = self.list_available_models();
-        let installed: Vec<LocalModelInfo> = models.into_iter().filter(|m| m.is_installed).collect();
+        let installed: Vec<LocalModelInfo> = models
+            .into_iter()
+            .filter(|m| m.family == ModelFamily::Whisper && m.is_installed)
+            .collect();
 
         if installed.is_empty() {
             return None;
@@ -328,6 +371,10 @@ impl ModelManager {
             .into_iter()
             .find(|m| m.id == model_id)
             .ok_or_else(|| ProviderError::ModelError(format!("Model ID '{}' not recognized", model_id)))?;
+
+        if target.format == ModelFormat::OnnxDirectory {
+            return self.download_directory_model(&target, progress).await;
+        }
 
         let dest_path = self.models_dir.join(&target.filename);
         let part_path = self.models_dir.join(format!("{}.part", target.filename));
@@ -486,6 +533,134 @@ impl ModelManager {
         Ok(dest_path)
     }
 
+    async fn download_directory_model<F>(
+        &self,
+        target: &LocalModelInfo,
+        mut progress: F,
+    ) -> Result<PathBuf, ProviderError>
+    where
+        F: FnMut(u64, u64) + Send + 'static,
+    {
+        let archive_path = self.models_dir.join(format!("{}.part.tar.gz", target.id));
+        let extract_path = self.models_dir.join(format!("{}.part", target.filename));
+        let destination = self.models_dir.join(&target.filename);
+        tracing::info!(
+            target: "forge.model_download",
+            phase = "started",
+            model_id = %target.id,
+            destination = %destination.display(),
+            "Starting Parakeet model archive download"
+        );
+        let response = Client::new()
+            .get(&target.download_url)
+            .send()
+            .await
+            .map_err(|error| ProviderError::NetworkError(error.to_string()))?;
+        if !response.status().is_success() {
+            return Err(ProviderError::NetworkError(format!(
+                "Failed to download model (HTTP {})",
+                response.status()
+            )));
+        }
+        let total = response.content_length().unwrap_or(target.size_mb * 1024 * 1024);
+        tracing::info!(
+            target: "forge.model_download",
+            phase = "connected",
+            model_id = %target.id,
+            total_bytes = total,
+            "Connected to Parakeet model download source"
+        );
+
+        let mut file = File::create(&archive_path)
+            .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+        let mut response = response;
+        let mut downloaded: u64 = 0;
+        while let Some(chunk) = response.chunk().await.map_err(|error| {
+            let _ = remove_file(&archive_path);
+            ProviderError::NetworkError(error.to_string())
+        })? {
+            file.write_all(&chunk)
+                .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+            downloaded = downloaded.saturating_add(chunk.len() as u64);
+            progress(downloaded, total);
+        }
+        file.flush()
+            .map_err(|error| {
+                let _ = remove_file(&archive_path);
+                ProviderError::ModelError(error.to_string())
+            })?;
+        let verify_result = verify_model_hash(&archive_path, &target.sha256);
+        if let Err(error) = verify_result {
+            let _ = remove_file(&archive_path);
+            return Err(error);
+        }
+        progress(total, total);
+        tracing::info!(
+            target: "forge.model_download",
+            phase = "verified",
+            model_id = %target.id,
+            "Parakeet model archive verified"
+        );
+
+        let extract_result = Self::extract_directory_model(&archive_path, &extract_path);
+        let install_result = extract_result.and_then(|()| {
+            let candidate = if extract_path.join(&target.filename).is_dir() {
+                extract_path.join(&target.filename)
+            } else {
+                extract_path.clone()
+            };
+            let validation_result = parakeet::validate_model_directory(&candidate);
+            if let Err(error) = validation_result {
+                let _ = std::fs::remove_dir_all(&extract_path);
+                return Err(error);
+            }
+            let _ = std::fs::remove_dir_all(&destination);
+            std::fs::rename(&candidate, &destination)
+                .map_err(|error| ProviderError::ModelError(error.to_string()))
+        });
+        let _ = std::fs::remove_dir_all(&extract_path);
+        let _ = remove_file(&archive_path);
+        install_result.map_err(|error| {
+            warn!(
+                target: "forge.model_download",
+                phase = "install_failed",
+                model_id = %target.id,
+                error = %error,
+                "Parakeet model installation failed"
+            );
+            error
+        })?;
+        tracing::info!(
+            target: "forge.model_download",
+            phase = "installed",
+            model_id = %target.id,
+            destination = %destination.display(),
+            "Parakeet model installed"
+        );
+        Ok(destination)
+    }
+
+    fn extract_directory_model(
+        archive_path: &Path,
+        extract_path: &Path,
+    ) -> Result<(), ProviderError> {
+        let _ = std::fs::remove_dir_all(extract_path);
+        std::fs::create_dir_all(extract_path).map_err(|error| ProviderError::ModelError(error.to_string()))?;
+
+        let decoder = GzDecoder::new(
+            File::open(archive_path)
+                .map_err(|error| ProviderError::ModelError(error.to_string()))?,
+        );
+
+        let unpack_result = tar::Archive::new(decoder).unpack(extract_path);
+
+        if unpack_result.is_err() {
+            let _ = std::fs::remove_dir_all(extract_path);
+        }
+
+        unpack_result.map_err(|error| ProviderError::ModelError(error.to_string()))
+    }
+
     pub fn delete_model(&self, model_id: &str) -> Result<bool, ProviderError> {
         let models = self.list_available_models();
         let target = models
@@ -493,7 +668,11 @@ impl ModelManager {
             .find(|m| m.id == model_id)
             .ok_or_else(|| ProviderError::ModelError(format!("Model ID '{}' not found", model_id)))?;
 
-        if let Some(existing_path) = self.find_model_file(&target.filename) {
+        if target.format == ModelFormat::OnnxDirectory {
+            let path = self.find_model_directory(&target.filename)?;
+            std::fs::remove_dir_all(path).map_err(|e| ProviderError::ModelError(e.to_string()))?;
+            Ok(true)
+        } else if let Some(existing_path) = self.find_model_file(&target.filename) {
             remove_file(existing_path).map_err(|e| ProviderError::ModelError(e.to_string()))?;
             Ok(true)
         } else {
@@ -528,6 +707,30 @@ fn verify_model_file(path: &Path, expected_size: u64, expected_sha256: &str) -> 
         ));
     }
 
+    Ok(())
+}
+
+fn verify_model_hash(path: &Path, expected_sha256: &str) -> Result<(), ProviderError> {
+    let mut file = File::open(path).map_err(|error| {
+        ProviderError::ModelError(format!(
+            "Failed to open model archive for verification: {}",
+            error
+        ))
+    })?;
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher).map_err(|error| {
+        ProviderError::ModelError(format!(
+            "Failed to read model archive for verification: {}",
+            error
+        ))
+    })?;
+    let actual = format!("{:x}", hasher.finalize());
+    if actual != expected_sha256 {
+        return Err(ProviderError::ModelError(format!(
+            "SHA-256 mismatch: expected {}, got {}",
+            expected_sha256, actual
+        )));
+    }
     Ok(())
 }
 
@@ -591,9 +794,11 @@ impl HardwareDetector {
 
         let ram_gb = get_system_ram_gb();
 
-        let (rec_model, reason) = if ram_gb >= 16 && logical_cores >= 8 {
+        let (rec_model_id, rec_model_name, rec_family, reason) = if ram_gb >= 16 && logical_cores >= 8 {
             (
                 "large-v3-turbo",
+                "Whisper Large v3 Turbo",
+                ModelFamily::Whisper,
                 format!(
                     "High-performance hardware detected ({} cores, {} GB RAM); Whisper Large v3 Turbo recommended.",
                     logical_cores, ram_gb
@@ -601,15 +806,19 @@ impl HardwareDetector {
             )
         } else if ram_gb >= 8 && logical_cores >= 4 {
             (
-                "small",
+                "parakeet-v3-int8",
+                "Parakeet V3 Int8",
+                ModelFamily::Parakeet,
                 format!(
-                    "Balanced hardware detected ({} cores, {} GB RAM); Whisper Small recommended for balanced latency and high accuracy.",
+                    "Balanced hardware detected ({} cores, {} GB RAM); Parakeet V3 Int8 recommended for fast local dictation with automatic language detection.",
                     logical_cores, ram_gb
                 ),
             )
         } else {
             (
                 "base",
+                "Whisper Base",
+                ModelFamily::Whisper,
                 format!(
                     "Standard hardware detected ({} cores, {} GB RAM); Whisper Base recommended for smooth latency.",
                     logical_cores, ram_gb
@@ -623,13 +832,17 @@ impl HardwareDetector {
             estimated_ram_gb = ram_gb,
             gpu_acceleration = false,
             backend = "cpu",
-            "Local Whisper hardware recommendation detected"
+            recommended_model_id = rec_model_id,
+            recommended_family = %rec_family,
+            "Local model hardware recommendation detected"
         );
 
         HardwareRecommendation {
             logical_cores,
             estimated_ram_gb: ram_gb,
-            recommended_model_id: rec_model.to_string(),
+            recommended_model_id: rec_model_id.to_string(),
+            recommended_model_name: rec_model_name.to_string(),
+            recommended_family: rec_family,
             reason,
         }
     }
@@ -900,7 +1113,7 @@ mod tests {
         local_compute_device_info, sha256_file, verify_model_file, LocalWhisperProvider,
         ModelManager, WhisperContextKey,
     };
-    use forge_transcription::{AudioData, TranscriptionOptions, TranscriptionProvider};
+    use forge_transcription::{AudioData, ModelFamily, ModelFormat, TranscriptionOptions, TranscriptionProvider};
     use std::collections::HashMap;
     use std::fs;
     use std::path::PathBuf;
@@ -940,11 +1153,23 @@ mod tests {
     #[test]
     fn catalog_metadata_is_pinned_and_hashed() {
         for model in LocalWhisperProvider::default().model_manager.list_available_models() {
-            assert_eq!(model.revision.len(), 40);
+            if model.family == ModelFamily::Whisper {
+                assert_eq!(model.revision.len(), 40);
+                assert!(model.download_url.contains(&model.revision));
+            }
             assert_eq!(model.sha256.len(), 64);
-            assert!(model.download_url.contains(&model.revision));
             assert!(model.size_bytes > 0);
         }
+    }
+
+    #[test]
+    fn parakeet_catalog_entry_uses_verified_directory_metadata() {
+        let models = LocalWhisperProvider::default().model_manager.list_available_models();
+        let parakeet = models.iter().find(|model| model.id == "parakeet-v3-int8").unwrap();
+        assert_eq!(parakeet.family, ModelFamily::Parakeet);
+        assert_eq!(parakeet.format, ModelFormat::OnnxDirectory);
+        assert_eq!(parakeet.filename, "parakeet-tdt-0.6b-v3-int8");
+        assert_eq!(parakeet.sha256.len(), 64);
     }
 
     #[test]

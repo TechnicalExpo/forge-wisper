@@ -2,10 +2,10 @@ use forge_audio::AudioRecorder;
 use forge_cleanup::{CleanupOptions, FormattingMode, RuleBasedCleaner};
 use forge_output::{OutputEngine, PasteOutcome};
 use forge_provider_groq::GroqTranscriptionProvider;
-use forge_provider_local_whisper::{LocalWhisperProvider, ModelManager};
+use forge_provider_local_whisper::{parakeet::LocalParakeetProvider, LocalWhisperProvider, ModelManager};
 use forge_security::SecretStore;
 use forge_storage::{HistoryRecord, RetentionPolicy, StorageEngine};
-use forge_transcription::{normalize_language, AudioData, ProviderError, TranscriptionOptions, TranscriptionProvider};
+use forge_transcription::{normalize_language, AudioData, ModelFamily, ProviderError, TranscriptionOptions, TranscriptionProvider};
 use forge_verification::VerificationEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -34,6 +34,8 @@ pub enum ProcessingState {
 pub struct AppSettings {
     pub provider: String,            // "groq", "local-whisper"
     pub model: String,               // e.g. "whisper-large-v3-turbo" or "base"
+    #[serde(default)]
+    pub local_model_family: ModelFamily,
     #[serde(default = "default_compute_device")]
     pub compute_device: String,      // "cpu" or "gpu"
     #[serde(default = "default_language")]
@@ -56,6 +58,7 @@ pub struct AppSettings {
 pub struct SettingsPatch {
     pub provider: Option<String>,
     pub model: Option<String>,
+    pub local_model_family: Option<ModelFamily>,
     pub compute_device: Option<String>,
     pub language: Option<String>,
     pub microphone: Option<Option<String>>,
@@ -87,6 +90,7 @@ impl AppSettings {
         let mut next = self.clone();
         if let Some(value) = patch.provider { next.provider = value; }
         if let Some(value) = patch.model { next.model = value; }
+        if let Some(value) = patch.local_model_family { next.local_model_family = value; }
         if let Some(value) = patch.compute_device { next.compute_device = value; }
         if let Some(value) = patch.language { next.language = normalize_language(Some(&value)); }
         if let Some(value) = patch.microphone { next.microphone = value; }
@@ -120,6 +124,7 @@ impl Default for AppSettings {
         Self {
             provider: "groq".to_string(),
             model: "whisper-large-v3-turbo".to_string(),
+            local_model_family: ModelFamily::Whisper,
             compute_device: default_compute_device(),
             language: default_language(),
             microphone: None,
@@ -185,6 +190,7 @@ pub struct PipelineState {
     pub model_manager: Arc<ModelManager>,
     pub groq_provider: Arc<GroqTranscriptionProvider>,
     pub local_provider: Arc<LocalWhisperProvider>,
+    pub parakeet_provider: Arc<LocalParakeetProvider>,
     pub last_recording_toggle: Arc<Mutex<Instant>>,
 }
 
@@ -210,6 +216,7 @@ impl PipelineState {
             model_manager: Arc::clone(&model_manager),
             groq_provider,
             local_provider: Arc::new(LocalWhisperProvider::new(Arc::clone(&model_manager))),
+            parakeet_provider: Arc::new(LocalParakeetProvider::new(Arc::clone(&model_manager))),
             last_recording_toggle: Arc::new(Mutex::new(Instant::now())),
         }
     }
@@ -373,9 +380,9 @@ impl PipelineState {
             elapsed_ms = encode_started.elapsed().as_millis() as u64,
         );
 
-        let (provider_name, model_name, compute_device, language, fmt_mode, dict, snippets, retention) = {
+        let (provider_name, model_name, local_model_family, compute_device, language, fmt_mode, dict, snippets, retention) = {
             let s = self.settings.lock().unwrap();
-            (s.provider.clone(), s.model.clone(), s.compute_device.clone(), normalize_language(Some(&s.language)), s.formatting_mode, s.dictionary.clone(), s.snippets.clone(), s.retention_policy)
+            (s.provider.clone(), s.model.clone(), s.local_model_family, s.compute_device.clone(), normalize_language(Some(&s.language)), s.formatting_mode, s.dictionary.clone(), s.snippets.clone(), s.retention_policy)
         };
 
         let audio_data = AudioData::new(wav_bytes, 16000, 1, start_time.elapsed().as_millis() as u64);
@@ -384,16 +391,19 @@ impl PipelineState {
         self.set_state(&app, ProcessingState::Transcribing, None);
         let transcription_started = Instant::now();
         let transcript_result = match provider_name.as_str() {
-            "local-whisper" => {
-                self.local_provider
-                    .transcribe(audio_data, TranscriptionOptions {
-                        model: Some(model_name.clone()),
-                        compute_device: Some(compute_device.clone()),
-                        language: Some(language.clone()),
-                        ..Default::default()
-                    })
-                    .await
-            }
+            "local-whisper" => match local_model_family {
+                ModelFamily::Whisper => self.local_provider.transcribe(audio_data, TranscriptionOptions {
+                    model: Some(model_name.clone()),
+                    compute_device: Some(compute_device.clone()),
+                    language: Some(language.clone()),
+                    ..Default::default()
+                }).await,
+                ModelFamily::Parakeet => self.parakeet_provider.transcribe(audio_data, TranscriptionOptions {
+                    model: Some(model_name.clone()),
+                    language: Some("auto".to_string()),
+                    ..Default::default()
+                }).await,
+            },
             _ => {
                 // Default to Groq Cloud Whisper
                 self.groq_provider
@@ -627,6 +637,28 @@ mod settings_tests {
         assert_eq!(next.provider, current.provider);
         assert_eq!(next.hotkey, current.hotkey);
         assert_eq!(next.launch_at_startup, current.launch_at_startup);
+    }
+
+    #[test]
+    fn legacy_settings_default_to_whisper_family() {
+        let settings: AppSettings = serde_json::from_str(
+            r#"{
+                "provider":"local-whisper",
+                "model":"base",
+                "compute_device":"cpu",
+                "language":"auto",
+                "microphone":null,
+                "formatting_mode":"Smart",
+                "hotkey":"Control+Space",
+                "is_toggle_mode":true,
+                "retention_policy":"Days30",
+                "dictionary":{},
+                "snippets":{},
+                "theme":"light"
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(settings.local_model_family, forge_transcription::ModelFamily::Whisper);
     }
 
     #[test]

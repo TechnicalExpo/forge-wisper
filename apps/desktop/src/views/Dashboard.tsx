@@ -303,9 +303,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           {/* Status Indicator Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-[var(--surface-primary)] border border-[var(--border)] text-[13px]">
             <span
-              className={`w-2 h-2 rounded-full ${
-                isRecording ? "bg-[var(--accent)] animate-pulse" : "bg-[var(--accent)]"
-              }`}
+              className={`w-2 h-2 rounded-full ${isRecording ? "bg-[var(--accent)] animate-pulse" : "bg-[var(--accent)]"
+                }`}
             />
             <span className="font-medium text-[var(--text-primary)]">
               {isRecording ? `Recording (${formatTime(durationSecs)})` : "Ready"}
@@ -354,13 +353,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             type="button"
             onClick={toggleRecording}
             disabled={isProcessing}
-            className={`inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-[6px] font-medium text-[13px] transition-all duration-150 select-none cursor-pointer shadow-xs ${
-              isProcessing
-                ? "bg-[var(--surface-elevated)] text-[var(--text-disabled)] cursor-not-allowed border border-[var(--border)]"
-                : isRecording
+            className={`inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-[6px] font-medium text-[13px] transition-all duration-150 select-none cursor-pointer shadow-xs ${isProcessing
+              ? "bg-[var(--surface-elevated)] text-[var(--text-disabled)] cursor-not-allowed border border-[var(--border)]"
+              : isRecording
                 ? "bg-[var(--error)] text-white hover:opacity-95"
                 : "bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent-hover)] font-semibold"
-            }`}
+              }`}
           >
             {isProcessing ? (
               <>
@@ -392,6 +390,84 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
       </div>
 
+      {/* RIGHT: FORGE WORDS STATS CARD */}
+      <div className="forge-card self-start w-full lg:col-span-1 p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] flex flex-col justify-between space-y-3 min-h-[160px]">
+        {/* Header with Title and Today Dropdown */}
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest">
+            FORGE WORDS
+          </span>
+
+          <div className="relative" ref={timeframeDropdownRef}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowTimeframeDropdown(!showTimeframeDropdown);
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] bg-[var(--surface-elevated)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition-colors cursor-pointer"
+            >
+              <span>{timeframe === "Today" ? "Today" : timeframe === "Week" ? "This Week" : "All Time"}</span>
+              {showTimeframeDropdown ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)]" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />}
+            </button>
+
+            {showTimeframeDropdown && (
+              <div className="absolute right-0 mt-1 w-28 py-1 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-[6px] shadow-lg z-30 font-sans text-[12px]">
+                {(["Today", "Week", "All"] as const).map((tf) => (
+                  <button
+                    key={tf}
+                    onClick={() => {
+                      setTimeframe(tf);
+                      setShowTimeframeDropdown(false);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 hover:bg-[var(--surface-hover)] transition-colors ${timeframe === tf ? "text-[var(--accent)] font-medium" : "text-[var(--text-primary)]"
+                      }`}
+                  >
+                    {tf === "Today" ? "Today" : tf === "Week" ? "This Week" : "All Time"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 3 Metric Columns with Balanced Proportions */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 my-auto py-2 text-center items-center">
+          {/* Col 1: Words transcribed */}
+          <div className="flex flex-col items-center space-y-1">
+            <div className="text-[32px] sm:text-[36px] font-bold font-sans text-[var(--text-primary)] tracking-tight leading-none tabular-nums">
+              {metrics.wordsTranscribed}
+            </div>
+            <div className="text-[12px] font-medium text-[var(--text-secondary)] font-sans leading-tight">
+              Words<br />transcribed
+            </div>
+          </div>
+
+          {/* Col 2: Time saved */}
+          <div className="flex flex-col items-center space-y-1">
+            <div className="flex items-baseline justify-center text-[32px] sm:text-[36px] font-bold font-sans text-[var(--text-primary)] tracking-tight leading-none tabular-nums">
+              <span>{savedTime.value}</span>
+              <span className="text-[18px] sm:text-[20px] font-semibold text-[var(--text-muted)] ml-0.5">
+                {savedTime.unit}
+              </span>
+            </div>
+            <div className="text-[12px] font-medium text-[var(--text-secondary)] font-sans leading-tight">
+              Time<br />saved
+            </div>
+          </div>
+
+          {/* Col 3: Sessions */}
+          <div className="flex flex-col items-center space-y-1">
+            <div className="text-[32px] sm:text-[36px] font-bold font-sans text-[var(--text-primary)] tracking-tight leading-none tabular-nums">
+              {metrics.sessionsCount}
+            </div>
+            <div className="text-[12px] font-medium text-[var(--text-secondary)] font-sans leading-tight">
+              Sessions
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 2. BENTO DASHBOARD: transcript, metrics, controls, and recent history */}
       <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4">
         {/* LEFT: DICTATION CARD */}
@@ -413,8 +489,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   {isRecording
                     ? `${durationSecs.toFixed(1)}s duration`
                     : history[0]
-                    ? `${((history[0].duration_ms || 0) / 1000).toFixed(1)}s duration`
-                    : "0.0s duration"}
+                      ? `${((history[0].duration_ms || 0) / 1000).toFixed(1)}s duration`
+                      : "0.0s duration"}
                 </span>
                 <span className="text-[var(--text-muted)]">·</span>
                 <span className="text-[var(--text-muted)] font-mono">{metrics.wpm} WPM</span>
@@ -448,10 +524,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       e.stopPropagation();
                       setShowFormatDropdown(!showFormatDropdown);
                     }}
-                     className="inline-flex items-center justify-between gap-2 px-2.5 py-1 rounded-[5px] bg-[var(--surface-elevated)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[12px] text-[var(--text-primary)] font-medium transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-between gap-2 px-2.5 py-1 rounded-[5px] bg-[var(--surface-elevated)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[12px] text-[var(--text-primary)] font-medium transition-colors cursor-pointer"
                   >
                     <span>Format</span>
-                     {showFormatDropdown ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)]" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />}
+                    {showFormatDropdown ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)]" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />}
                   </button>
 
                   {showFormatDropdown && (
@@ -460,19 +536,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                         <button
                           key={mode}
                           onClick={() => handleUpdateMode(mode)}
-                          className={`w-full text-left px-3 py-1.5 hover:bg-[var(--surface-hover)] transition-colors flex items-center justify-between ${
-                            settings?.formatting_mode === mode ? "text-[var(--accent)] font-medium" : "text-[var(--text-primary)]"
-                          }`}
+                          className={`w-full text-left px-3 py-1.5 hover:bg-[var(--surface-hover)] transition-colors flex items-center justify-between ${settings?.formatting_mode === mode ? "text-[var(--accent)] font-medium" : "text-[var(--text-primary)]"
+                            }`}
                         >
                           <span>{mode}</span>
                           {settings?.formatting_mode === mode && <Check className="w-3 h-3" />}
                         </button>
                       ))}
                     </div>
-         )}
-       </div>
-      </div>
-    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -496,9 +570,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               return (
                 <div
                   key={i}
-                  className={`w-[3px] rounded-full transition-all duration-75 ease-out ${
-                    dynamicHeight > 5 ? "bg-[var(--accent)]" : "bg-[var(--accent)] opacity-35"
-                  }`}
+                  className={`w-[3px] rounded-full transition-all duration-75 ease-out ${dynamicHeight > 5 ? "bg-[var(--accent)]" : "bg-[var(--accent)] opacity-35"
+                    }`}
                   style={{
                     height: `${dynamicHeight}px`,
                   }}
@@ -507,85 +580,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             })}
           </div>
         </div>
+      </div>
 
-        {/* RIGHT: FORGE WORDS STATS CARD */}
-        <div className="forge-card self-start w-full lg:col-span-1 p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] flex flex-col justify-between space-y-3 min-h-[160px]">
-          {/* Header with Title and Today Dropdown */}
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest">
-              FORGE WORDS
-            </span>
-
-            <div className="relative" ref={timeframeDropdownRef}>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowTimeframeDropdown(!showTimeframeDropdown);
-                }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] bg-[var(--surface-elevated)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition-colors cursor-pointer"
-              >
-                <span>{timeframe === "Today" ? "Today" : timeframe === "Week" ? "This Week" : "All Time"}</span>
-                 {showTimeframeDropdown ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)]" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />}
-              </button>
-
-              {showTimeframeDropdown && (
-                <div className="absolute right-0 mt-1 w-28 py-1 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-[6px] shadow-lg z-30 font-sans text-[12px]">
-                  {(["Today", "Week", "All"] as const).map((tf) => (
-                    <button
-                      key={tf}
-                      onClick={() => {
-                        setTimeframe(tf);
-                        setShowTimeframeDropdown(false);
-                      }}
-                      className={`w-full text-left px-3 py-1.5 hover:bg-[var(--surface-hover)] transition-colors ${
-                        timeframe === tf ? "text-[var(--accent)] font-medium" : "text-[var(--text-primary)]"
-                      }`}
-                    >
-                      {tf === "Today" ? "Today" : tf === "Week" ? "This Week" : "All Time"}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 3 Metric Columns with Balanced Proportions */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 my-auto py-2 text-center items-center">
-            {/* Col 1: Words transcribed */}
-            <div className="flex flex-col items-center space-y-1">
-              <div className="text-[32px] sm:text-[36px] font-bold font-sans text-[var(--text-primary)] tracking-tight leading-none tabular-nums">
-                {metrics.wordsTranscribed}
-              </div>
-              <div className="text-[12px] font-medium text-[var(--text-secondary)] font-sans leading-tight">
-                Words<br />transcribed
-              </div>
-            </div>
-
-            {/* Col 2: Time saved */}
-            <div className="flex flex-col items-center space-y-1">
-              <div className="flex items-baseline justify-center text-[32px] sm:text-[36px] font-bold font-sans text-[var(--text-primary)] tracking-tight leading-none tabular-nums">
-                <span>{savedTime.value}</span>
-                <span className="text-[18px] sm:text-[20px] font-semibold text-[var(--text-muted)] ml-0.5">
-                  {savedTime.unit}
-                </span>
-              </div>
-              <div className="text-[12px] font-medium text-[var(--text-secondary)] font-sans leading-tight">
-                Time<br />saved
-              </div>
-            </div>
-
-            {/* Col 3: Sessions */}
-            <div className="flex flex-col items-center space-y-1">
-              <div className="text-[32px] sm:text-[36px] font-bold font-sans text-[var(--text-primary)] tracking-tight leading-none tabular-nums">
-                {metrics.sessionsCount}
-              </div>
-              <div className="text-[12px] font-medium text-[var(--text-secondary)] font-sans leading-tight">
-                Sessions
-              </div>
-            </div>
-          </div>
-        </div>
       {/* 3. CURRENT SETUP TOOLBAR */}
       <div className="forge-card lg:col-span-1 p-3.5 sm:p-4 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] space-y-2">
         <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest block">
@@ -602,11 +598,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <button
                   type="button"
                   onClick={() => handleUpdateProvider("groq")}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] font-medium transition-all cursor-pointer ${
-                    settings?.provider !== "local-whisper"
-                      ? "bg-[var(--surface-primary)] border border-[var(--accent)] text-[var(--text-primary)] shadow-2xs"
-                      : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                  }`}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] font-medium transition-all cursor-pointer ${settings?.provider !== "local-whisper"
+                    ? "bg-[var(--surface-primary)] border border-[var(--accent)] text-[var(--text-primary)] shadow-2xs"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    }`}
                 >
                   <Zap className="w-3.5 h-3.5 text-[var(--warning)]" />
                   <span>Groq Cloud</span>
@@ -614,11 +609,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <button
                   type="button"
                   onClick={() => handleUpdateProvider("local-whisper")}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] font-medium transition-all cursor-pointer ${
-                    settings?.provider === "local-whisper"
-                      ? "bg-[var(--surface-primary)] border border-[var(--accent)] text-[var(--text-primary)] shadow-2xs"
-                      : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                  }`}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] font-medium transition-all cursor-pointer ${settings?.provider === "local-whisper"
+                    ? "bg-[var(--surface-primary)] border border-[var(--accent)] text-[var(--text-primary)] shadow-2xs"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    }`}
                 >
                   <span>Local Whisper</span>
                 </button>
@@ -638,7 +632,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] bg-[var(--surface-elevated)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[12px] text-[var(--text-primary)] font-medium transition-colors cursor-pointer"
                 >
                   <span>{settings?.formatting_mode === "Smart" ? "Smart Cleanup" : settings?.formatting_mode || "Smart Cleanup"}</span>
-                   {showModeDropdown ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)]" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />}
+                  {showModeDropdown ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)]" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />}
                 </button>
 
                 {showModeDropdown && (
@@ -647,9 +641,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       <button
                         key={mode}
                         onClick={() => handleUpdateMode(mode)}
-                        className={`w-full text-left px-3 py-1.5 hover:bg-[var(--surface-hover)] transition-colors ${
-                          settings?.formatting_mode === mode ? "text-[var(--accent)] font-medium" : "text-[var(--text-primary)]"
-                        }`}
+                        className={`w-full text-left px-3 py-1.5 hover:bg-[var(--surface-hover)] transition-colors ${settings?.formatting_mode === mode ? "text-[var(--accent)] font-medium" : "text-[var(--text-primary)]"
+                          }`}
                       >
                         {mode === "Smart" ? "Smart Cleanup" : mode}
                       </button>
@@ -675,16 +668,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   <span className="truncate">
                     {settings?.microphone || "Default Microphone"}
                   </span>
-                   {showMicDropdown ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)] shrink-0" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)] shrink-0" />}
+                  {showMicDropdown ? <ChevronUp className="w-3 h-3 text-[var(--text-muted)] shrink-0" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)] shrink-0" />}
                 </button>
 
                 {showMicDropdown && (
                   <div className="absolute left-0 mt-1 w-64 max-h-48 overflow-y-auto py-1 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-[6px] shadow-lg z-30 font-sans text-[12px]">
                     <button
                       onClick={() => handleSelectMicrophone(null)}
-                      className={`w-full text-left px-3 py-1.5 hover:bg-[var(--surface-hover)] transition-colors truncate ${
-                        !settings?.microphone ? "text-[var(--accent)] font-medium" : "text-[var(--text-primary)]"
-                      }`}
+                      className={`w-full text-left px-3 py-1.5 hover:bg-[var(--surface-hover)] transition-colors truncate ${!settings?.microphone ? "text-[var(--accent)] font-medium" : "text-[var(--text-primary)]"
+                        }`}
                     >
                       System Default Microphone
                     </button>
@@ -692,9 +684,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       <button
                         key={dev.name}
                         onClick={() => handleSelectMicrophone(dev.name)}
-                        className={`w-full text-left px-3 py-1.5 hover:bg-[var(--surface-hover)] transition-colors truncate ${
-                          settings?.microphone === dev.name ? "text-[var(--accent)] font-medium" : "text-[var(--text-primary)]"
-                        }`}
+                        className={`w-full text-left px-3 py-1.5 hover:bg-[var(--surface-hover)] transition-colors truncate ${settings?.microphone === dev.name ? "text-[var(--accent)] font-medium" : "text-[var(--text-primary)]"
+                          }`}
                       >
                         {dev.name}
                       </button>
@@ -717,13 +708,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 return (
                   <div
                     key={step}
-                    className={`w-[2.5px] h-full rounded-[1px] transition-colors duration-75 ${
-                      isActive
-                        ? isAmber
-                          ? "bg-[var(--warning)]"
-                          : "bg-[var(--accent)]"
-                        : "bg-[var(--border)] opacity-30"
-                    }`}
+                    className={`w-[2.5px] h-full rounded-[1px] transition-colors duration-75 ${isActive
+                      ? isAmber
+                        ? "bg-[var(--warning)]"
+                        : "bg-[var(--accent)]"
+                      : "bg-[var(--border)] opacity-30"
+                      }`}
                   />
                 );
               })}
@@ -793,13 +783,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       <span>·</span>
                       {/* Latency Pill Badge */}
                       <span
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded-[4px] font-mono text-[11px] font-medium ${
-                          isFast
-                            ? "bg-[rgba(16,185,129,0.12)] text-[#10b981] border border-[rgba(16,185,129,0.3)]"
-                            : isMedium
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded-[4px] font-mono text-[11px] font-medium ${isFast
+                          ? "bg-[rgba(16,185,129,0.12)] text-[#10b981] border border-[rgba(16,185,129,0.3)]"
+                          : isMedium
                             ? "bg-[rgba(245,158,11,0.12)] text-[#f59e0b] border border-[rgba(245,158,11,0.3)]"
                             : "bg-[rgba(239,68,68,0.12)] text-[#ef4444] border border-[rgba(239,68,68,0.3)]"
-                        }`}
+                          }`}
                       >
                         <Zap className="w-2.5 h-2.5 fill-current" />
                         <span>{item.duration_ms || 740}ms</span>

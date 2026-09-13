@@ -393,9 +393,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       </div>
 
       {/* 2. HERO SPLIT: DICTATION CARD & FORGE WORDS STATS CARD (Balanced 50/50 Grid) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4">
         {/* LEFT: DICTATION CARD */}
-        <div className="forge-card p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] flex flex-col justify-between space-y-3 min-h-[160px]">
+        <div className="forge-card self-start w-full p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] flex flex-col justify-between space-y-3 min-h-[160px]">
           {/* Card Top: Section Title & Live Transcription Metadata */}
           <div className="space-y-1">
             <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest block">
@@ -476,8 +476,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </div>
 
           {/* Dictation Text Body with Blinking Cursor */}
-          <div className="py-2 min-h-[56px]">
-            <p className="text-[14px] sm:text-[15px] font-sans font-normal text-[var(--text-primary)] leading-relaxed">
+          <div className="py-2 min-h-[56px] max-h-[220px] overflow-y-auto overscroll-contain">
+            <p className="text-[14px] sm:text-[15px] font-sans font-normal text-[var(--text-primary)] leading-relaxed break-words">
               {latestDictationText}
               <span className="inline-block w-[2px] h-[16px] bg-[var(--accent)] ml-1 translate-y-[2px] animate-pulse" />
             </p>
@@ -508,7 +508,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
 
         {/* RIGHT: FORGE WORDS STATS CARD */}
-        <div className="forge-card p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] flex flex-col justify-between space-y-3 min-h-[160px]">
+        <div className="forge-card self-start w-full p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] flex flex-col justify-between space-y-3 min-h-[160px]">
           {/* Header with Title and Today Dropdown */}
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest">

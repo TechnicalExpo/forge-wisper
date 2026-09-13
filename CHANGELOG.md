@@ -9,6 +9,15 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.19] - 2026-09-13
+
+### Fixed
+
+- Prevented the Forge Words dashboard card from stretching to match long
+  dictation content on wide layouts.
+- Added a bounded scroll area for unusually long latest-transcription text while
+  preserving responsive mobile stacking.
+
 ## [0.3.18] - 2026-09-13
 
 ### Developer Experience

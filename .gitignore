@@ -96,9 +96,12 @@ desktop.ini
 .idea/
 *.sublime-workspace
 *.sublime-project
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
+.vscode/
+
+# --- Internal Agent, Documentation, And Notice Files ---
+AGENTS.md
+THIRD_PARTY_NOTICES.md
+docs/
 
 # --- Internal Specifications & PRD Documents ---
 *PRD*

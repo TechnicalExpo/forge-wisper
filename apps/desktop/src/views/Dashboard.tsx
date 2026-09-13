@@ -392,10 +392,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* 2. HERO SPLIT: DICTATION CARD & FORGE WORDS STATS CARD (Balanced 50/50 Grid) */}
+      {/* 2. BENTO DASHBOARD: transcript, metrics, controls, and recent history */}
       <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-4">
         {/* LEFT: DICTATION CARD */}
-        <div className="forge-card self-start w-full p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] flex flex-col justify-between space-y-3 min-h-[160px]">
+        <div className="forge-card self-start w-full lg:col-span-2 p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] flex flex-col justify-between space-y-3 min-h-[160px]">
           {/* Card Top: Section Title & Live Transcription Metadata */}
           <div className="space-y-1">
             <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest block">
@@ -469,9 +469,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                         </button>
                       ))}
                     </div>
-                  )}
-                </div>
-              </div>
+         )}
+       </div>
+      </div>
+    </div>
             </div>
           </div>
 
@@ -508,7 +509,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
 
         {/* RIGHT: FORGE WORDS STATS CARD */}
-        <div className="forge-card self-start w-full p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] flex flex-col justify-between space-y-3 min-h-[160px]">
+        <div className="forge-card self-start w-full lg:col-span-1 p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] flex flex-col justify-between space-y-3 min-h-[160px]">
           {/* Header with Title and Today Dropdown */}
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest">
@@ -585,10 +586,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </div>
         </div>
-      </div>
-
       {/* 3. CURRENT SETUP TOOLBAR */}
-      <div className="forge-card p-3.5 sm:p-4 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] space-y-2">
+      <div className="forge-card lg:col-span-1 p-3.5 sm:p-4 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] space-y-2">
         <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest block">
           CURRENT SETUP
         </span>
@@ -737,7 +736,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       </div>
 
       {/* 4. RECENT DICTATIONS SECTION */}
-      <div className="forge-card p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] space-y-3">
+      <div className="forge-card lg:col-span-2 p-4 sm:p-5 rounded-[8px] bg-[var(--surface-primary)] border border-[var(--border)] space-y-3">
         {/* Section Header */}
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-mono text-[var(--accent)] font-semibold uppercase tracking-widest">

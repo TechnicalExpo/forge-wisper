@@ -9,6 +9,14 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.20] - 2026-09-13
+
+### UI
+
+- Reorganized the Dashboard into a responsive Bento layout with full-width
+  dictation/recent-history cards and compact metrics/setup cards.
+- Bounded long latest-transcription content without stretching adjacent cards.
+
 ## [0.3.19] - 2026-09-13
 
 ### Fixed

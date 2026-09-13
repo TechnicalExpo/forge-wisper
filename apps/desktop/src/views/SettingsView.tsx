@@ -309,7 +309,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate: _onNavig
     { id: "engine", label: "Engine & Audio", icon: Cpu },
     { id: "shortcuts", label: "Hotkeys & Voice", icon: Keyboard },
     { id: "security", label: "API Credentials", icon: Key },
-    { id: "appearance", label: "Appearance & Privacy", icon: Palette },
+    { id: "appearance", label: "Theme & Privacy", icon: Palette },
     { id: "about", label: "About System", icon: Info },
   ];
 

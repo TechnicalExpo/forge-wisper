@@ -8,6 +8,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{create_dir_all, remove_file, File};
+use flate2::read::GzDecoder;
 use std::io::Write;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
@@ -599,7 +600,7 @@ impl ModelManager {
             "Parakeet model archive verified"
         );
 
-        let extract_result = Self::extract_directory_model(&archive_path, &extract_path, &target.filename);
+        let extract_result = Self::extract_directory_model(&archive_path, &extract_path);
         let install_result = extract_result.and_then(|()| {
             let candidate = if extract_path.join(&target.filename).is_dir() {
                 extract_path.join(&target.filename)
@@ -640,37 +641,22 @@ impl ModelManager {
     fn extract_directory_model(
         archive_path: &Path,
         extract_path: &Path,
-        directory_name: &str,
     ) -> Result<(), ProviderError> {
         let _ = std::fs::remove_dir_all(extract_path);
         std::fs::create_dir_all(extract_path).map_err(|error| ProviderError::ModelError(error.to_string()))?;
-        let archive = File::open(archive_path).map_err(|error| ProviderError::ModelError(error.to_string()))?;
-        let decoder = flate2::read::GzDecoder::new(archive);
-        let mut tar = tar::Archive::new(decoder);
-        for entry in tar
-            .entries()
-            .map_err(|error| ProviderError::ModelError(error.to_string()))?
-        {
-            let mut entry = entry.map_err(|error| ProviderError::ModelError(error.to_string()))?;
-            let path = entry
-                .path()
-                .map_err(|error| ProviderError::ModelError(error.to_string()))?
-                .into_owned();
-            if path.is_absolute() || path.components().any(|component| matches!(component, std::path::Component::ParentDir)) {
-                return Err(ProviderError::ModelError("Model archive contains an unsafe path".to_string()));
-            }
-            if path.file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| name.starts_with("._"))
-            {
-                continue;
-            }
-            entry
-                .unpack(extract_path)
-                .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+
+        let decoder = GzDecoder::new(
+            File::open(archive_path)
+                .map_err(|error| ProviderError::ModelError(error.to_string()))?,
+        );
+
+        let unpack_result = tar::Archive::new(decoder).unpack(extract_path);
+
+        if unpack_result.is_err() {
+            let _ = std::fs::remove_dir_all(extract_path);
         }
-        let _ = directory_name;
-        Ok(())
+
+        unpack_result.map_err(|error| ProviderError::ModelError(error.to_string()))
     }
 
     pub fn delete_model(&self, model_id: &str) -> Result<bool, ProviderError> {

@@ -291,7 +291,7 @@ Thank you to everyone who has helped build and improve **Forge Wisper**!
         <img src="https://github.com/TechincalExpo.png" width="70px;" alt="Arsalan Khan" style="border-radius: 50%;" /><br />
         <sub><b>Arsalan Khan</b></sub>
       </a><br />
-      <sub>Local Model Providers & Windows Tooling</sub>
+      <sub>Parakeet Models, Local Runtime & Windows Dev Tooling</sub>
     </td>
   </tr>
 </table>

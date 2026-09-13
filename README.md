@@ -191,8 +191,26 @@ forge-wisper/
    toolchains into the repository.
 
    The Vulkan native build uses `C:\t` as a short Cargo target directory to
-   avoid Windows MSBuild path limits. This is generated build cache only. Old
-   direct builds may also leave artifacts under the repository `target` folder.
+   avoid Windows MSBuild path limits. This is generated build cache only. The
+   application source and Cargo watch paths will still appear in logs under the
+   repository path, for example `D:\CODING\WindowsApp\forge-wisper`, while
+   compiled artifacts may appear under `C:\t`. These are two different path
+   roles, not two copies of the application:
+
+   ```text
+   D:\CODING\WindowsApp\forge-wisper
+   → source files, Cargo workspace, watched crates, project target history
+
+   C:\t
+   → active short-path Cargo/Vulkan build cache used by Windows development
+   ```
+
+   Older direct builds can also leave stale artifacts under the repository
+   `target` folder. Cargo intentionally reuses build artifacts between runs,
+   so the cache can grow when dependencies, compiler settings, or native Vulkan
+   build hashes change. Do not clean it before every run; that would force a
+   multi-minute native rebuild each time. Clean generated caches only when disk
+   space requires it or after a native build configuration change.
    To remove both generated caches safely, close Forge Wisper and run:
 
    ```powershell

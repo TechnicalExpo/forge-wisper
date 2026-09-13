@@ -220,7 +220,7 @@ fn set_autostart_inner(_enable: bool) -> Result<(), String> {
                 }
             }
         } else {
-            let _ = Command::new("reg")
+            let output = Command::new("reg")
                 .args([
                     "delete",
                     "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
@@ -228,7 +228,14 @@ fn set_autostart_inner(_enable: bool) -> Result<(), String> {
                     "ForgeWisper",
                     "/f",
                 ])
-                .status();
+                .output()
+                .map_err(|e| e.to_string())?;
+            // A missing value already represents the requested disabled state.
+            if !output.status.success()
+                && !String::from_utf8_lossy(&output.stderr).contains("unable to find")
+            {
+                return Err("Failed to remove Forge Wisper from Windows startup registry".to_string());
+            }
         }
     }
     Ok(())

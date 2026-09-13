@@ -54,12 +54,15 @@ export const App: React.FC = () => {
     }
 
     const storeCleanup = startAppStore();
-    void storeCleanup.then(async () => {
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-      const window = getCurrentWindow();
-      await window.show();
-      await window.setFocus();
-    });
+    // Show the main window after the first browser paint, independent of
+    // settings IPC so a slow backend cannot leave a tray-only blank process.
+    void new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+      .then(async () => {
+        const window = getCurrentWindow();
+        await window.show();
+        await window.setFocus();
+      })
+      .catch((error) => console.error("Failed to show main window:", error));
 
     const unlistenToast = api.onToast((msg) => {
       setToastMessage(msg);

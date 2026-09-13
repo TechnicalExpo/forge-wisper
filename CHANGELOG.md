@@ -17,6 +17,12 @@ versioned section before merging a release/update branch.
   CMake, and Vulkan SDK versions instead of depending on one machine's paths.
 - Added actionable prerequisite messages for missing Windows build tools.
 
+### Fixed
+
+- Main window now shows after the frontend first paint even if settings IPC is
+  slow, preventing a tray-only blank launch.
+- Preserved the separate recorder-window lifecycle.
+
 ## [0.3.16] - 2026-09-13
 
 ### Developer Experience

@@ -44,16 +44,18 @@ pub fn validate_model_directory(path: &Path) -> Result<(), ProviderError> {
     Ok(())
 }
 
+type ParakeetEngineCache = Arc<Mutex<Option<(PathBuf, Arc<Mutex<ParakeetEngine>>)>>>;
+
 pub struct LocalParakeetProvider {
     model_manager: Arc<ModelManager>,
-    active_model_path: Arc<Mutex<Option<PathBuf>>>,
+    engine_cache: ParakeetEngineCache,
 }
 
 impl LocalParakeetProvider {
     pub fn new(model_manager: Arc<ModelManager>) -> Self {
         Self {
             model_manager,
-            active_model_path: Arc::new(Mutex::new(None)),
+            engine_cache: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -62,7 +64,10 @@ impl LocalParakeetProvider {
     }
 
     pub fn set_active_model_path(&self, path: Option<PathBuf>) {
-        *self.active_model_path.lock().unwrap() = path;
+        let mut cache = self.engine_cache.lock().unwrap();
+        if cache.as_ref().map(|(cached, _)| cached) != path.as_ref() {
+            *cache = None;
+        }
     }
 
     fn resolve_model_path(&self) -> Result<PathBuf, ProviderError> {
@@ -113,7 +118,7 @@ impl TranscriptionProvider for LocalParakeetProvider {
         }
 
         let model_path = self.resolve_model_path()?;
-        *self.active_model_path.lock().unwrap() = Some(model_path.clone());
+        let engine_cache = Arc::clone(&self.engine_cache);
         let duration_ms = audio.duration_ms;
         let started = Instant::now();
 
@@ -132,10 +137,26 @@ impl TranscriptionProvider for LocalParakeetProvider {
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|error| ProviderError::InvalidAudio(error.to_string()))?;
 
-            let mut engine = ParakeetEngine::new();
-            engine
-                .load_model_with_params(&model_path, ParakeetModelParams::int8())
-                .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+            let mut cache = engine_cache
+                .lock()
+                .map_err(|_| ProviderError::InternalError("Parakeet engine cache was poisoned".to_string()))?;
+            if cache.as_ref().map(|(cached, _)| cached) != Some(&model_path) {
+                let mut engine = ParakeetEngine::new();
+                engine
+                    .load_model_with_params(&model_path, ParakeetModelParams::int8())
+                    .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+                *cache = Some((model_path.clone(), Arc::new(Mutex::new(engine))));
+            }
+            let engine = Arc::clone(
+                &cache
+                .as_mut()
+                .ok_or_else(|| ProviderError::ModelError("Parakeet model was not loaded".to_string()))?
+                .1,
+            );
+            drop(cache);
+            let mut engine = engine
+                .lock()
+                .map_err(|_| ProviderError::InternalError("Parakeet engine was poisoned".to_string()))?;
             let result = engine
                 .transcribe_samples(samples, None)
                 .map_err(|error| ProviderError::InternalError(error.to_string()))?;

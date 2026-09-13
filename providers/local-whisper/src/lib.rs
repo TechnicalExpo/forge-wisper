@@ -659,6 +659,12 @@ impl ModelManager {
             if path.is_absolute() || path.components().any(|component| matches!(component, std::path::Component::ParentDir)) {
                 return Err(ProviderError::ModelError("Model archive contains an unsafe path".to_string()));
             }
+            if path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with("._"))
+            {
+                continue;
+            }
             entry
                 .unpack(extract_path)
                 .map_err(|error| ProviderError::ModelError(error.to_string()))?;

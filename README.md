@@ -287,8 +287,8 @@ Thank you to everyone who has helped build and improve **Forge Wisper**!
       <sub>Native macOS Support & Packaging</sub>
     </td>
     <td align="center">
-      <a href="https://github.com/TechincalExpo">
-        <img src="https://github.com/TechincalExpo.png" width="70px;" alt="Arsalan Khan" style="border-radius: 50%;" /><br />
+      <a href="https://github.com/TechnicalExpo">
+        <img src="https://github.com/TechnicalExpo.png" width="70px;" alt="Arsalan Khan" style="border-radius: 50%;" /><br />
         <sub><b>Arsalan Khan</b></sub>
       </a><br />
       <sub>Parakeet Models, Local Runtime & Windows Dev Tooling</sub>

@@ -30,6 +30,11 @@ at a deep repository checkout is still too long for MSBuild's nested Vulkan
 shader-generator paths. `C:\t` contains generated build output only and can be
 deleted safely when no Cargo process is running.
 
+If an earlier direct `pnpm tauri:dev` run created a large repository `target`
+directory in addition to `C:\t`, close all Cargo/Tauri processes and run
+`pnpm clean:windows-builds`. The cleanup requires typing `CLEAN` and removes
+only generated Rust build artifacts.
+
 For development, the repository provides a repeatable launcher that performs this setup and loads the MSVC environment automatically:
 
 ```powershell

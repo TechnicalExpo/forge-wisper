@@ -9,6 +9,13 @@ The project follows [Semantic Versioning](https://semver.org/).
 Add user-visible changes here while work is in progress. Move entries into a
 versioned section before merging a release/update branch.
 
+## [0.3.16] - 2026-09-13
+
+### Developer Experience
+
+- Added a confirmation-protected Windows build-cache cleanup command for stale
+  repository and short Vulkan Cargo target directories.
+
 ## [0.3.15] - 2026-09-13
 
 ### UI

@@ -190,6 +190,18 @@ forge-wisper/
    also required. The launcher discovers installed versions; do not copy these
    toolchains into the repository.
 
+   The Vulkan native build uses `C:\t` as a short Cargo target directory to
+   avoid Windows MSBuild path limits. This is generated build cache only. Old
+   direct builds may also leave artifacts under the repository `target` folder.
+   To remove both generated caches safely, close Forge Wisper and run:
+
+   ```powershell
+   pnpm clean:windows-builds
+   ```
+
+   Type `CLEAN` when prompted. This does not remove source files, downloaded
+   Local Whisper models, settings, history, or credentials.
+
 4. **Build Production Installer / Packages**:
    ```bash
    # Windows (Generates .exe NSIS installer)

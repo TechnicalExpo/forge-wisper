@@ -1,6 +1,6 @@
 {
   "name": "forge-wisper-monorepo",
-  "version": "0.3.15",
+  "version": "0.3.16",
   "private": true,
   "description": "Open-Source AI Voice-to-Text and Smart Writing Desktop Application",
   "scripts": {
@@ -9,6 +9,7 @@
     "tauri": "pnpm --filter @forge-wisper/desktop tauri",
     "tauri:dev": "node scripts/dev-platform.mjs",
     "tauri:dev:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-windows.ps1",
+    "clean:windows-builds": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-windows-builds.ps1",
     "tauri:build": "pnpm --filter @forge-wisper/desktop tauri build",
     "build:macos": "cd apps/macOS && sh build.sh",
     "test": "cargo test --workspace"

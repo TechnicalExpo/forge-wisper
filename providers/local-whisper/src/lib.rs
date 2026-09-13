@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use directories::ProjectDirs;
 use forge_transcription::{
-    normalize_language, AudioData, ProviderCapabilities, ProviderError, Transcript, TranscriptionOptions,
-    TranscriptionProvider,
+    normalize_language, AudioData, ModelFamily, ModelFormat, ProviderCapabilities, ProviderError,
+    Transcript, TranscriptionOptions, TranscriptionProvider,
 };
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -29,6 +29,10 @@ pub struct ModelDownloadProgress {
 pub struct LocalModelInfo {
     pub id: String,
     pub name: String,
+    #[serde(default)]
+    pub family: ModelFamily,
+    #[serde(default)]
+    pub format: ModelFormat,
     pub filename: String,
     pub size_mb: u64,
     pub ram_estimate_mb: u64,
@@ -266,6 +270,8 @@ impl ModelManager {
                 LocalModelInfo {
                     id: id.to_string(),
                     name: name.to_string(),
+                    family: ModelFamily::Whisper,
+                    format: ModelFormat::GgmlBin,
                     filename: filename.to_string(),
                     size_mb,
                     ram_estimate_mb: ram_mb,

@@ -582,15 +582,69 @@ impl ModelManager {
             progress(downloaded, total);
         }
         file.flush()
-            .map_err(|error| ProviderError::ModelError(error.to_string()))?;
-        verify_model_hash(&archive_path, &target.sha256)?;
+            .map_err(|error| {
+                let _ = remove_file(&archive_path);
+                ProviderError::ModelError(error.to_string())
+            })?;
+        let verify_result = verify_model_hash(&archive_path, &target.sha256);
+        if let Err(error) = verify_result {
+            let _ = remove_file(&archive_path);
+            return Err(error);
+        }
         progress(total, total);
+        tracing::info!(
+            target: "forge.model_download",
+            phase = "verified",
+            model_id = %target.id,
+            "Parakeet model archive verified"
+        );
 
+        let extract_result = Self::extract_directory_model(&archive_path, &extract_path, &target.filename);
+        let install_result = extract_result.and_then(|()| {
+            let candidate = if extract_path.join(&target.filename).is_dir() {
+                extract_path.join(&target.filename)
+            } else {
+                extract_path.clone()
+            };
+            let validation_result = parakeet::validate_model_directory(&candidate);
+            if let Err(error) = validation_result {
+                let _ = std::fs::remove_dir_all(&extract_path);
+                return Err(error);
+            }
+            let _ = std::fs::remove_dir_all(&destination);
+            std::fs::rename(&candidate, &destination)
+                .map_err(|error| ProviderError::ModelError(error.to_string()))
+        });
         let _ = std::fs::remove_dir_all(&extract_path);
-        std::fs::create_dir_all(&extract_path)
-            .map_err(|error| ProviderError::ModelError(error.to_string()))?;
-        let archive = File::open(&archive_path)
-            .map_err(|error| ProviderError::ModelError(error.to_string()))?;
+        let _ = remove_file(&archive_path);
+        install_result.map_err(|error| {
+            warn!(
+                target: "forge.model_download",
+                phase = "install_failed",
+                model_id = %target.id,
+                error = %error,
+                "Parakeet model installation failed"
+            );
+            error
+        })?;
+        tracing::info!(
+            target: "forge.model_download",
+            phase = "installed",
+            model_id = %target.id,
+            destination = %destination.display(),
+            "Parakeet model installed"
+        );
+        Ok(destination)
+    }
+
+    fn extract_directory_model(
+        archive_path: &Path,
+        extract_path: &Path,
+        directory_name: &str,
+    ) -> Result<(), ProviderError> {
+        let _ = std::fs::remove_dir_all(extract_path);
+        std::fs::create_dir_all(extract_path).map_err(|error| ProviderError::ModelError(error.to_string()))?;
+        let archive = File::open(archive_path).map_err(|error| ProviderError::ModelError(error.to_string()))?;
         let decoder = flate2::read::GzDecoder::new(archive);
         let mut tar = tar::Archive::new(decoder);
         for entry in tar
@@ -606,22 +660,11 @@ impl ModelManager {
                 return Err(ProviderError::ModelError("Model archive contains an unsafe path".to_string()));
             }
             entry
-                .unpack(&extract_path)
+                .unpack(extract_path)
                 .map_err(|error| ProviderError::ModelError(error.to_string()))?;
         }
-
-        let candidate = if extract_path.join(&target.filename).is_dir() {
-            extract_path.join(&target.filename)
-        } else {
-            extract_path.clone()
-        };
-        parakeet::validate_model_directory(&candidate)?;
-        let _ = std::fs::remove_dir_all(&destination);
-        std::fs::rename(&candidate, &destination)
-            .map_err(|error| ProviderError::ModelError(error.to_string()))?;
-        let _ = std::fs::remove_dir_all(&extract_path);
-        let _ = std::fs::remove_file(&archive_path);
-        Ok(destination)
+        let _ = directory_name;
+        Ok(())
     }
 
     pub fn delete_model(&self, model_id: &str) -> Result<bool, ProviderError> {
@@ -674,12 +717,25 @@ fn verify_model_file(path: &Path, expected_size: u64, expected_sha256: &str) -> 
 }
 
 fn verify_model_hash(path: &Path, expected_sha256: &str) -> Result<(), ProviderError> {
-    let mut file = File::open(path).map_err(|error| ProviderError::ModelError(error.to_string()))?;
+    let mut file = File::open(path).map_err(|error| {
+        ProviderError::ModelError(format!(
+            "Failed to open model archive for verification: {}",
+            error
+        ))
+    })?;
     let mut hasher = Sha256::new();
-    std::io::copy(&mut file, &mut hasher).map_err(|error| ProviderError::ModelError(error.to_string()))?;
+    std::io::copy(&mut file, &mut hasher).map_err(|error| {
+        ProviderError::ModelError(format!(
+            "Failed to read model archive for verification: {}",
+            error
+        ))
+    })?;
     let actual = format!("{:x}", hasher.finalize());
     if actual != expected_sha256 {
-        return Err(ProviderError::ModelError("Model archive integrity verification failed".to_string()));
+        return Err(ProviderError::ModelError(format!(
+            "SHA-256 mismatch: expected {}, got {}",
+            expected_sha256, actual
+        )));
     }
     Ok(())
 }
